@@ -90,14 +90,14 @@ export default function Layout({ children, currentPageName }) {
 
   // Compute branding from company or defaults
   const defaultBranding = useMemo(() => ({
-    appName: "Gestão de Empresas", logoUrl: null,
+    appName: "AgendaFlow", logoUrl: null,
     primaryColor: "#b7005e", secondaryColor: "#db2777",
     accentColor: "#1a1c1c", backgroundColor: "#f9f9f9",
   }), []);
 
   const branding = effectiveCompany
     ? {
-        appName: effectiveCompany.branding_app_name || effectiveCompany.name || "Gestão de Empresas",
+        appName: effectiveCompany.branding_app_name || effectiveCompany.name || "AgendaFlow",
         logoUrl: effectiveCompany.branding_logo_url,
         primaryColor: effectiveCompany.branding_primary_color || "#b7005e",
         secondaryColor: effectiveCompany.branding_secondary_color || "#db2777",
@@ -209,7 +209,7 @@ export default function Layout({ children, currentPageName }) {
                 {branding.logoUrl ? (
                   <img src={branding.logoUrl} alt="" className="w-5 h-5 object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
                 ) : (
-                  <Scissors className="w-5 h-5 text-white" />
+                  <Calendar className="w-5 h-5 text-white" />
                 )}
               </div>
             </div>
@@ -266,13 +266,13 @@ export default function Layout({ children, currentPageName }) {
                 {branding.logoUrl ? (
                   <img src={branding.logoUrl} alt="" className="w-6 h-6 object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
                 ) : (
-                  <Scissors className="w-6 h-6 text-white" />
+                  <Calendar className="w-6 h-6 text-white" />
                 )}
               </div>
             </div>
             <div className="min-w-0">
               <h1 className="font-bold text-sm leading-tight truncate" style={{ color: theme.cardText }}>{branding.appName}</h1>
-              <p className="text-xs mt-0.5" style={{ color: theme.sidebarText }}>Gestão de Empresas</p>
+              <p className="text-xs mt-0.5" style={{ color: theme.sidebarText }}>Gestão de Agendamentos</p>
             </div>
           </Link>
 

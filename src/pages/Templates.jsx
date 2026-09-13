@@ -76,7 +76,7 @@ Renove seu plano e continue aproveitando! ✂️
 Acesse seu portal:
 🔗 {link_portal}
 👤 E-mail + senha *123456*`,
-  welcome: `Bem-vindo(a) à Salon Management, {nome_cliente}! 🎉
+  welcome: `Bem-vindo(a) à AgendaFlow, {nome_cliente}! 🎉
 
 Estamos muito felizes em tê-lo(a) conosco! 💙
 
@@ -482,7 +482,7 @@ export default function Templates() {
                     A
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-white">Salon Management</span>
+                    <span className="text-xs font-bold text-white">AgendaFlow</span>
                     <p className="text-[9px] text-white/60">online</p>
                   </div>
                 </div>

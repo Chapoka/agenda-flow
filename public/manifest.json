@@ -1,6 +1,6 @@
 {
-  "name": "Empresa Rodrigo - Gestão de Empresas",
-  "short_name": "Empresa Rodrigo",
+  "name": "AgendaFlow - Gestão de Agendamentos",
+  "short_name": "AgendaFlow",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#F59E0B",
