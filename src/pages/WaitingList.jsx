@@ -11,7 +11,13 @@ import {
   Calendar,
   Filter,
   UserPlus,
-  Clock
+  Clock,
+  Building2,
+  LayoutGrid,
+  List,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +46,8 @@ export default function WaitingList() {
   const { companyId, isProfissional, isSuperAdmin } = useCurrentUser();
   const [search, setSearch] = useState("");
   const [modalityFilter, setModalityFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("grid");
+  const [sortOrder, setSortOrder] = useState("recent");
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
     customer_name: "",
@@ -60,6 +68,13 @@ export default function WaitingList() {
       return all;
     },
   });
+
+  const { data: companies = [] } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => db.entities.Company.list(),
+    enabled: isSuperAdmin,
+  });
+  const getCompanyName = (cid) => companies.find(c => c.id === cid)?.name || "—";
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers", companyId, isProfissional],
@@ -117,6 +132,24 @@ export default function WaitingList() {
     return matchesSearch && matchesModality;
   });
 
+  const sortedList = [...filteredList].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.customer_name || "").localeCompare(b.customer_name || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.customer_name || "").localeCompare(a.customer_name || "", "pt-BR");
+    if (sortOrder === "empresa-asc") return (a.company_id ? getCompanyName(a.company_id) : "").localeCompare(b.company_id ? getCompanyName(b.company_id) : "", "pt-BR");
+    if (sortOrder === "empresa-desc") return (b.company_id ? getCompanyName(b.company_id) : "").localeCompare(a.company_id ? getCompanyName(a.company_id) : "", "pt-BR");
+    if (sortOrder === "servico-asc") return (a.modality || "").localeCompare(b.modality || "", "pt-BR");
+    if (sortOrder === "servico-desc") return (b.modality || "").localeCompare(a.modality || "", "pt-BR");
+    if (sortOrder === "duracao-asc") return (a.duration_mins || 0) - (b.duration_mins || 0);
+    if (sortOrder === "duracao-desc") return (b.duration_mins || 0) - (a.duration_mins || 0);
+    if (sortOrder === "whatsapp-asc") return (a.whatsapp || "").localeCompare(b.whatsapp || "", "pt-BR");
+    if (sortOrder === "whatsapp-desc") return (b.whatsapp || "").localeCompare(a.whatsapp || "", "pt-BR");
+    if (sortOrder === "prioridade-asc") return (a.priority || "").localeCompare(b.priority || "", "pt-BR");
+    if (sortOrder === "prioridade-desc") return (b.priority || "").localeCompare(a.priority || "", "pt-BR");
+    if (sortOrder === "recent") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    return 0;
+  });
+
   return (
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -166,6 +199,46 @@ export default function WaitingList() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-full sm:w-44">
+              <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger className="rounded-xl">
+                  <ArrowUpDown className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Ordenar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name-asc">Cliente A → Z</SelectItem>
+                  <SelectItem value="name-desc">Cliente Z → A</SelectItem>
+                  <SelectItem value="empresa-asc">Empresa A → Z</SelectItem>
+                  <SelectItem value="empresa-desc">Empresa Z → A</SelectItem>
+                  <SelectItem value="servico-asc">Serviço A → Z</SelectItem>
+                  <SelectItem value="servico-desc">Serviço Z → A</SelectItem>
+                  <SelectItem value="duracao-asc">Duração ↑</SelectItem>
+                  <SelectItem value="duracao-desc">Duração ↓</SelectItem>
+                  <SelectItem value="whatsapp-asc">WhatsApp A → Z</SelectItem>
+                  <SelectItem value="whatsapp-desc">WhatsApp Z → A</SelectItem>
+                  <SelectItem value="prioridade-asc">Prioridade A → Z</SelectItem>
+                  <SelectItem value="prioridade-desc">Prioridade Z → A</SelectItem>
+                  <SelectItem value="recent">Mais recentes ↓</SelectItem>
+                  <SelectItem value="oldest">Mais antigos ↑</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="inline-flex rounded-xl border border-outline-variant bg-card p-1 shadow-sm self-start sm:self-auto">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "grid" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                title="Visualização em grade"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "list" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                title="Visualização em lista"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -176,7 +249,7 @@ export default function WaitingList() {
               <div key={i} className="bg-card rounded-2xl p-6 animate-pulse h-32" />
             ))}
           </div>
-        ) : filteredList.length === 0 ? (
+        ) : sortedList.length === 0 ? (
           <div className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 p-12 text-center">
             <ListOrdered className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-on-surface mb-2">Fila vazia</h3>
@@ -189,9 +262,42 @@ export default function WaitingList() {
               Adicionar Primeiro
             </Button>
           </div>
+        ) : viewMode === "list" ? (
+          <div className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-background border-b border-outline-variant/30">
+                  <tr className="text-left text-muted-foreground">
+                    <th className="px-4 py-3 font-medium">#</th>
+                    <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "name-asc" ? "name-desc" : "name-asc")}><span className="inline-flex items-center gap-1">Cliente {sortOrder === "name-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "name-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    {isSuperAdmin && <th className="px-4 py-3 font-medium hidden lg:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "empresa-asc" ? "empresa-desc" : "empresa-asc")}><span className="inline-flex items-center gap-1">Empresa {sortOrder === "empresa-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "empresa-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>}
+                    <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "servico-asc" ? "servico-desc" : "servico-asc")}><span className="inline-flex items-center gap-1">Serviço {sortOrder === "servico-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "servico-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium hidden sm:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "duracao-asc" ? "duracao-desc" : "duracao-asc")}><span className="inline-flex items-center gap-1">Duração {sortOrder === "duracao-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "duracao-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "whatsapp-asc" ? "whatsapp-desc" : "whatsapp-asc")}><span className="inline-flex items-center gap-1">WhatsApp {sortOrder === "whatsapp-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "whatsapp-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "prioridade-asc" ? "prioridade-desc" : "prioridade-asc")}><span className="inline-flex items-center gap-1">Prioridade {sortOrder === "prioridade-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "prioridade-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/30">
+                  {sortedList.map((item, index) => (
+                    <tr key={item.id} className="hover:bg-surface-container-low transition-colors">
+                      <td className="px-4 py-3"><div className="w-8 h-8 rounded-full bg-gradient-to-br from-branding-primary to-branding-secondary flex items-center justify-center text-white font-bold text-sm">{index+1}</div></td>
+                      <td className="px-4 py-3 font-medium text-on-surface">{item.customer_name}</td>
+                      {isSuperAdmin && <td className="px-4 py-3 hidden lg:table-cell">{item.company_id ? <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(item.company_id)}</Badge> : <span className="text-muted-foreground">—</span>}</td>}
+                      <td className="px-4 py-3 hidden md:table-cell"><Badge className={cn("border", item.modality === "corte" ? "bg-branding-primary/10 text-branding-primary border-branding-primary/20" : "bg-branding-secondary/10 text-branding-secondary border-branding-secondary/20")}>{item.modality === "corte" ? "Corte" : "Barba"}</Badge></td>
+                      <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{item.duration_mins}min</td>
+                      <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{item.whatsapp || "—"}</td>
+                      <td className="px-4 py-3">{item.priority === "urgent" ? <Badge className="bg-red-500/20 text-red-300">Urgente</Badge> : <Badge variant="outline">{item.priority}</Badge>}</td>
+                      <td className="px-4 py-3 text-right"><Button size="sm" variant="outline" onClick={() => removeMutation.mutate(item.id)} className="rounded-lg text-xs text-red-400">Remover</Button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
           <div className="space-y-4">
-            {filteredList.map((item, index) => (
+            {sortedList.map((item, index) => (
               <div 
                 key={item.id}
                 className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 p-6 hover:shadow-md transition-all"
@@ -210,7 +316,10 @@ export default function WaitingList() {
                     </div>
                     
                     <div>
-                      <h3 className="text-lg font-bold text-on-surface">{item.customer_name}</h3>
+                      <h3 className="text-lg font-bold text-on-surface flex items-center gap-2 flex-wrap">
+                        {item.customer_name}
+                        {isSuperAdmin && item.company_id && <Badge variant="outline" className="text-[11px] bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(item.company_id)}</Badge>}
+                      </h3>
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         <Badge                         className={cn(
                           "border",

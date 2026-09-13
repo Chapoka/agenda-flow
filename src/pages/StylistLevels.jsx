@@ -11,10 +11,17 @@ import {
   MoreVertical,
   DollarSign,
   Users,
+  Building2,
+  LayoutGrid,
+  List,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +67,8 @@ export default function StylistLevels() {
   const [editingLevel, setEditingLevel] = useState(null);
   const [deletingLevel, setDeletingLevel] = useState(null);
   const [levelForm, setLevelForm] = useState(EMPTY_LEVEL);
+  const [viewMode, setViewMode] = useState("grid");
+  const [sortOrder, setSortOrder] = useState("name-asc");
 
   const effectiveCompanyId = companyId;
 
@@ -75,6 +84,13 @@ export default function StylistLevels() {
     enabled: ready,
   });
 
+  const { data: allCompanies = [] } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => db.entities.Company.list(),
+    enabled: ready && isSuperAdmin,
+  });
+  const getCompanyName = (cid) => allCompanies.find(c => c.id === cid)?.name || "—";
+
   const companyLevels = effectiveCompanyId
     ? levels.filter(l => l.company_id === effectiveCompanyId)
     : levels;
@@ -84,6 +100,22 @@ export default function StylistLevels() {
     if (u.stylist_level_id) {
       usersByLevel[u.stylist_level_id] = (usersByLevel[u.stylist_level_id] || 0) + 1;
     }
+  });
+
+  const sortedLevels = [...companyLevels].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.name || "").localeCompare(b.name || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.name || "").localeCompare(a.name || "", "pt-BR");
+    if (sortOrder === "empresa-asc") return (a.company_id ? getCompanyName(a.company_id) : "").localeCompare(b.company_id ? getCompanyName(b.company_id) : "", "pt-BR");
+    if (sortOrder === "empresa-desc") return (b.company_id ? getCompanyName(b.company_id) : "").localeCompare(a.company_id ? getCompanyName(a.company_id) : "", "pt-BR");
+    if (sortOrder === "multiplier-desc") return (b.multiplier || 0) - (a.multiplier || 0);
+    if (sortOrder === "multiplier-asc") return (a.multiplier || 0) - (b.multiplier || 0);
+    if (sortOrder === "profissionais-desc") return (usersByLevel[b.id] || 0) - (usersByLevel[a.id] || 0);
+    if (sortOrder === "profissionais-asc") return (usersByLevel[a.id] || 0) - (usersByLevel[b.id] || 0);
+    if (sortOrder === "status-asc") return (a.active !== false ? 1 : 0) - (b.active !== false ? 1 : 0);
+    if (sortOrder === "status-desc") return (b.active !== false ? 1 : 0) - (a.active !== false ? 1 : 0);
+    if (sortOrder === "recent") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    return 0;
   });
 
   const createLevel = useMutation({
@@ -169,13 +201,51 @@ export default function StylistLevels() {
           <h1 className="text-2xl font-bold" style={{ color: theme.cardText }}>Níveis do Profissional</h1>
           <p className="text-sm mt-1" style={{ color: theme.mutedText }}>Defina níveis de atendimento com multiplicadores de preço</p>
         </div>
-        <Button
-          onClick={() => { setEditingLevel(null); setLevelForm(EMPTY_LEVEL); setShowForm(true); }}
-          className="bg-branding-primary text-white hover:opacity-90"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Nível
-        </Button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Select value={sortOrder} onValueChange={setSortOrder}>
+            <SelectTrigger className="w-44 rounded-xl border-outline-variant text-sm h-9">
+              <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name-asc">Nível A → Z</SelectItem>
+              <SelectItem value="name-desc">Nível Z → A</SelectItem>
+              <SelectItem value="empresa-asc">Empresa A → Z</SelectItem>
+              <SelectItem value="empresa-desc">Empresa Z → A</SelectItem>
+              <SelectItem value="multiplier-desc">Maior multiplicador ↓</SelectItem>
+              <SelectItem value="multiplier-asc">Menor multiplicador ↑</SelectItem>
+              <SelectItem value="profissionais-desc">Mais profissionais ↓</SelectItem>
+              <SelectItem value="profissionais-asc">Menos profissionais ↑</SelectItem>
+              <SelectItem value="status-asc">Inativo → Ativo</SelectItem>
+              <SelectItem value="status-desc">Ativo → Inativo</SelectItem>
+              <SelectItem value="recent">Mais recentes ↓</SelectItem>
+              <SelectItem value="oldest">Mais antigos ↑</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="inline-flex rounded-xl border border-outline-variant bg-card p-1 shadow-sm">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "grid" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+              title="Visualização em grade"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "list" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+              title="Visualização em lista"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+          <Button
+            onClick={() => { setEditingLevel(null); setLevelForm(EMPTY_LEVEL); setShowForm(true); }}
+            className="bg-branding-primary text-white hover:opacity-90"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Nível
+          </Button>
+          </div>
       </div>
 
       {/* Info card */}
@@ -220,7 +290,7 @@ export default function StylistLevels() {
       {/* Level Cards */}
       {isLoading ? (
         <div className="text-center py-12 text-on-surface-variant">Carregando...</div>
-      ) : companyLevels.length === 0 ? (
+      ) : sortedLevels.length === 0 ? (
         <div className="text-center py-12">
           <Award className="w-12 h-12 mx-auto text-on-surface-variant mb-3" />
           <p className="text-on-surface-variant">Nenhum nível configurado</p>
@@ -232,9 +302,47 @@ export default function StylistLevels() {
             <Plus className="w-4 h-4 mr-2" /> Criar primeiro nível
           </Button>
         </div>
+      ) : viewMode === "list" ? (
+        <div className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-background border-b border-outline-variant/30">
+                <tr className="text-left text-muted-foreground">
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "name-asc" ? "name-desc" : "name-asc")}><span className="inline-flex items-center gap-1">Nível {sortOrder === "name-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "name-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  {isSuperAdmin && <th className="px-4 py-3 font-medium hidden lg:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "empresa-asc" ? "empresa-desc" : "empresa-asc")}><span className="inline-flex items-center gap-1">Empresa {sortOrder === "empresa-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "empresa-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>}
+                  <th className="px-4 py-3 font-medium hidden sm:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "multiplier-desc" ? "multiplier-asc" : "multiplier-desc")}><span className="inline-flex items-center gap-1">Multiplicador {sortOrder === "multiplier-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "multiplier-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "profissionais-desc" ? "profissionais-asc" : "profissionais-desc")}><span className="inline-flex items-center gap-1">Profissionais {sortOrder === "profissionais-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "profissionais-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "status-asc" ? "status-desc" : "status-asc")}><span className="inline-flex items-center gap-1">Status {sortOrder === "status-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "status-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="px-4 py-3 font-medium text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/30">
+                {sortedLevels.map(level => {
+                  const userCount = usersByLevel[level.id] || 0;
+                  const isActive = level.active !== false;
+                  return (
+                    <tr key={level.id} className={`hover:bg-surface-container-low transition-colors ${!isActive ? "opacity-60" : ""}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: level.color || "#6366f1" }}>{Number(level.multiplier || 1).toFixed(1)}x</div>
+                          <span className="font-medium text-on-surface">{level.name}</span>
+                        </div>
+                      </td>
+                      {isSuperAdmin && <td className="px-4 py-3 hidden lg:table-cell">{level.company_id ? <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(level.company_id)}</Badge> : <span className="text-muted-foreground">—</span>}</td>}
+                      <td className="px-4 py-3 hidden sm:table-cell font-medium">x{Number(level.multiplier || 1).toFixed(2)}</td>
+                      <td className="px-4 py-3 hidden md:table-cell">{userCount} profissional{userCount !== 1 ? "is" : ""}</td>
+                      <td className="px-4 py-3"><div className="flex items-center gap-2"><Switch checked={isActive} onCheckedChange={(v) => toggleActive.mutate({ id: level.id, active: v })} /><Badge className={isActive ? "bg-emerald-500/20 text-emerald-300" : "bg-surface-container-low text-muted-foreground"}>{isActive ? "Ativo" : "Inativo"}</Badge></div></td>
+                      <td className="px-4 py-3 text-right"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => openEdit(level)}><Edit className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem><DropdownMenuItem onClick={() => setDeletingLevel(level)} className="text-red-400"><Trash2 className="w-4 h-4 mr-2" /> Excluir</DropdownMenuItem></DropdownMenuContent></DropdownMenu></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <div className="space-y-3">
-          {companyLevels.map(level => {
+          {sortedLevels.map(level => {
             const userCount = usersByLevel[level.id] || 0;
             const isActive = level.active !== false;
             return (
@@ -255,7 +363,14 @@ export default function StylistLevels() {
                       {level.multiplier ? `${Number(level.multiplier).toFixed(1)}x` : "1.0x"}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-on-surface">{level.name}</h3>
+                      <h3 className="font-semibold text-on-surface flex items-center gap-2 flex-wrap">
+                        {level.name}
+                        {isSuperAdmin && level.company_id && (
+                          <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1">
+                            <Building2 className="w-3 h-3" />{getCompanyName(level.company_id)}
+                          </Badge>
+                        )}
+                      </h3>
                       <p className="text-xs text-on-surface-variant">
                         Multiplicador: <span className="font-medium">{Number(level.multiplier || 1).toFixed(2)}x</span>
                         {userCount > 0 && (

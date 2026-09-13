@@ -24,24 +24,24 @@ function CopyIdButton({ id }) {
 }
 import { db } from "@/api/dbClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, Plus, Edit, Trash2, MoreVertical, GitBranch, Copy, Check, LayoutGrid, List, MessageCircle } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, MoreVertical, GitBranch, Copy, Check, LayoutGrid, List, MessageCircle, Power, PowerOff, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { formatCPF, formatCNPJ } from "@/utils/formatters";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import CompanyFormModal from "@/components/companies/CompanyFormModal";
 
-const ESTABELECIMENTO_LABELS = {
+const FALLBACK_ESTABELECIMENTO_LABELS = {
   barbearia: "Barbearia",
   clinica_estetica: "Clínica / Estética",
   salao_beleza: "Empresa de Beleza",
   studio_manicure: "Studio / Manicure",
 };
-
-const getEstabelecimentoLabel = (tipo) => ESTABELECIMENTO_LABELS[tipo] || tipo || "";
 
 export default function Companies() {
   const queryClient = useQueryClient();
@@ -52,6 +52,7 @@ export default function Companies() {
   const [editing, setEditing] = useState(null);
   const [deletingCompany, setDeletingCompany] = useState(null);
   const [viewMode, setViewMode] = useState("cards");
+  const [sortOrder, setSortOrder] = useState("name-asc");
   const [form, setForm] = useState(() => {
     try {
       const saved = localStorage.getItem("form_draft_company");
@@ -88,6 +89,15 @@ export default function Companies() {
   const isAdmin = role === "admin";
   const userCompanyIds = currentUser?.company_ids?.length ? currentUser.company_ids : (currentUser?.company_id ? [currentUser.company_id] : []);
 
+  const { data: establishmentTypes = [] } = useQuery({
+    queryKey: ["establishment_types"],
+    queryFn: () => db.entities.EstablishmentType.list(),
+  });
+  const estabelecimentoLabelMap = establishmentTypes.length
+    ? Object.fromEntries(establishmentTypes.map(t => [t.slug, t.name]))
+    : FALLBACK_ESTABELECIMENTO_LABELS;
+  const getEstabelecimentoLabel = (tipo) => estabelecimentoLabelMap[tipo] || tipo || "";
+
   const { data: allCompanies = [], isLoading, error: queryError } = useQuery({
     queryKey: ["companies"],
     queryFn: () => db.entities.Company.list("-created_at"),
@@ -98,6 +108,26 @@ export default function Companies() {
   const companies = isSuperAdmin
     ? allCompanies
     : allCompanies.filter(c => userCompanyIds.includes(c.id));
+
+  const sortedCompanies = [...companies].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.name || "").localeCompare(b.name || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.name || "").localeCompare(a.name || "", "pt-BR");
+    if (sortOrder === "recent") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    if (sortOrder === "city-asc") return (a.cidade || "").localeCompare(b.cidade || "", "pt-BR");
+    if (sortOrder === "city-desc") return (b.cidade || "").localeCompare(a.cidade || "", "pt-BR");
+    if (sortOrder === "tipo-asc") return getEstabelecimentoLabel(a.estabelecimento_tipo).localeCompare(getEstabelecimentoLabel(b.estabelecimento_tipo), "pt-BR");
+    if (sortOrder === "tipo-desc") return getEstabelecimentoLabel(b.estabelecimento_tipo).localeCompare(getEstabelecimentoLabel(a.estabelecimento_tipo), "pt-BR");
+    if (sortOrder === "cnpj-asc") return (a.cnpj || a.cpf_document || "").localeCompare(b.cnpj || b.cpf_document || "", "pt-BR");
+    if (sortOrder === "cnpj-desc") return (b.cnpj || b.cpf_document || "").localeCompare(a.cnpj || a.cpf_document || "", "pt-BR");
+    if (sortOrder === "contato-asc") return (a.email || a.phone || "").localeCompare(b.email || b.phone || "", "pt-BR");
+    if (sortOrder === "contato-desc") return (b.email || b.phone || "").localeCompare(a.email || a.phone || "", "pt-BR");
+    if (sortOrder === "responsavel-asc") return (a.owner_name || "").localeCompare(b.owner_name || "", "pt-BR");
+    if (sortOrder === "responsavel-desc") return (b.owner_name || "").localeCompare(a.owner_name || "", "pt-BR");
+    if (sortOrder === "status-asc") return (a.active !== false ? 1 : 0) - (b.active !== false ? 1 : 0);
+    if (sortOrder === "status-desc") return (b.active !== false ? 1 : 0) - (a.active !== false ? 1 : 0);
+    return 0;
+  });
 
   const createMutation = useMutation({
     mutationFn: (data) => db.entities.Company.create(data),
@@ -125,6 +155,15 @@ export default function Companies() {
     mutationFn: (id) => db.entities.Company.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["companies"] }); toast.success("Empresa removida!"); },
     onError: (err) => toast.error("Erro ao excluir empresa: " + (err?.message || "verifique se não há dependências")),
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, active }) => db.entities.Company.update(id, { active }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+      toast.success("Status da empresa atualizado!");
+    },
+    onError: (err) => toast.error("Erro ao atualizar status: " + (err?.message || "verifique sua conexão")),
   });
 
   const openModal = (company = null) => {
@@ -231,24 +270,50 @@ export default function Companies() {
             </h1>
             <p className="text-muted-foreground mt-1">{companies.length} empresa(s) cadastrada(s)</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {companies.length > 0 && (
-              <div className="inline-flex rounded-xl border border-outline-variant bg-card p-1 shadow-sm">
-                <button
-                  onClick={() => setViewMode("cards")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "cards" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
-                  title="Visualização em cards"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "list" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
-                  title="Visualização em lista"
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
+              <>
+                <Select value={sortOrder} onValueChange={setSortOrder}>
+                  <SelectTrigger className="w-44 rounded-xl border-outline-variant text-sm h-9">
+                    <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground flex-shrink-0" />
+                    <SelectValue placeholder="Ordenar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name-asc">Empresa A → Z</SelectItem>
+                    <SelectItem value="name-desc">Empresa Z → A</SelectItem>
+                    <SelectItem value="tipo-asc">Tipo A → Z</SelectItem>
+                    <SelectItem value="tipo-desc">Tipo Z → A</SelectItem>
+                    <SelectItem value="cnpj-asc">CNPJ A → Z</SelectItem>
+                    <SelectItem value="cnpj-desc">CNPJ Z → A</SelectItem>
+                    <SelectItem value="contato-asc">Contato A → Z</SelectItem>
+                    <SelectItem value="contato-desc">Contato Z → A</SelectItem>
+                    <SelectItem value="responsavel-asc">Responsável A → Z</SelectItem>
+                    <SelectItem value="responsavel-desc">Responsável Z → A</SelectItem>
+                    <SelectItem value="city-asc">Cidade A → Z</SelectItem>
+                    <SelectItem value="city-desc">Cidade Z → A</SelectItem>
+                    <SelectItem value="status-asc">Status A → Z</SelectItem>
+                    <SelectItem value="status-desc">Status Z → A</SelectItem>
+                    <SelectItem value="recent">Mais recentes ↓</SelectItem>
+                    <SelectItem value="oldest">Mais antigos ↑</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="inline-flex rounded-xl border border-outline-variant bg-card p-1 shadow-sm">
+                  <button
+                    onClick={() => setViewMode("cards")}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "cards" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                    title="Visualização em cards"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "list" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                    title="Visualização em lista"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
+              </>
             )}
             {isSuperAdmin && (
               <Button onClick={() => openModal()} className="btn-branding rounded-xl shadow-lg shadow-branding-primary/20">
@@ -277,7 +342,7 @@ export default function Companies() {
           </div>
         ) : viewMode === "cards" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {companies.map(company => (
+            {sortedCompanies.map(company => (
               <div key={company.id} className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 p-6 hover:shadow-md transition-all">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -306,6 +371,10 @@ export default function Companies() {
                         <DropdownMenuItem onClick={() => openModal(company)}>
                           <Edit className="w-4 h-4 mr-2" /> Editar
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toggleActiveMutation.mutate({ id: company.id, active: !(company.active !== false) })}>
+                          {company.active !== false ? <PowerOff className="w-4 h-4 mr-2" /> : <Power className="w-4 h-4 mr-2" />}
+                          {company.active !== false ? "Desativar" : "Ativar"}
+                        </DropdownMenuItem>
                         {isSuperAdmin && (
                           <DropdownMenuItem onClick={() => setDeletingCompany(company)} className="text-red-400">
                             <Trash2 className="w-4 h-4 mr-2" /> Excluir
@@ -323,9 +392,22 @@ export default function Companies() {
                 </div>
                 <div className="mt-3 pt-3 border-t border-outline-variant/30 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={company.active !== false ? "bg-emerald-500/20 text-emerald-300" : "bg-surface-container-low text-muted-foreground"}>
-                      {company.active !== false ? "Ativa" : "Inativa"}
-                    </Badge>
+                    {(isSuperAdmin || isAdmin) ? (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={company.active !== false}
+                          onCheckedChange={(checked) => toggleActiveMutation.mutate({ id: company.id, active: checked })}
+                          aria-label={company.active !== false ? "Desativar empresa" : "Ativar empresa"}
+                        />
+                        <Badge className={company.active !== false ? "bg-emerald-500/20 text-emerald-300" : "bg-surface-container-low text-muted-foreground"}>
+                          {company.active !== false ? "Ativa" : "Inativa"}
+                        </Badge>
+                      </div>
+                    ) : (
+                      <Badge className={company.active !== false ? "bg-emerald-500/20 text-emerald-300" : "bg-surface-container-low text-muted-foreground"}>
+                        {company.active !== false ? "Ativa" : "Inativa"}
+                      </Badge>
+                    )}
                     {company.estabelecimento_tipo && (
                       <Badge
                         className="flex items-center gap-1 bg-primary/10 text-primary border-primary/20"
@@ -356,18 +438,18 @@ export default function Companies() {
               <table className="w-full text-sm">
                 <thead className="bg-background border-b border-outline-variant/30">
                   <tr className="text-left text-muted-foreground">
-                    <th className="px-4 py-3 font-medium">Empresa</th>
-                    <th className="px-4 py-3 font-medium hidden md:table-cell">Tipo</th>
-                    <th className="px-4 py-3 font-medium hidden md:table-cell">CNPJ</th>
-                    <th className="px-4 py-3 font-medium hidden lg:table-cell">Contato</th>
-                    <th className="px-4 py-3 font-medium hidden lg:table-cell">Responsável</th>
-                    <th className="px-4 py-3 font-medium hidden md:table-cell">Cidade</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "name-asc" ? "name-desc" : "name-asc")}><span className="inline-flex items-center gap-1">Empresa {sortOrder === "name-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "name-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "tipo-asc" ? "tipo-desc" : "tipo-asc")}><span className="inline-flex items-center gap-1">Tipo {sortOrder === "tipo-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "tipo-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "cnpj-asc" ? "cnpj-desc" : "cnpj-asc")}><span className="inline-flex items-center gap-1">CNPJ {sortOrder === "cnpj-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "cnpj-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium hidden lg:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "contato-asc" ? "contato-desc" : "contato-asc")}><span className="inline-flex items-center gap-1">Contato {sortOrder === "contato-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "contato-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium hidden lg:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "responsavel-asc" ? "responsavel-desc" : "responsavel-asc")}><span className="inline-flex items-center gap-1">Responsável {sortOrder === "responsavel-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "responsavel-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "city-asc" ? "city-desc" : "city-asc")}><span className="inline-flex items-center gap-1">Cidade {sortOrder === "city-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "city-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "status-asc" ? "status-desc" : "status-asc")}><span className="inline-flex items-center gap-1">Status {sortOrder === "status-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "status-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
                     <th className="px-4 py-3 font-medium text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/30">
-                  {companies.map(company => (
+                  {sortedCompanies.map(company => (
                     <tr key={company.id} className="hover:bg-surface-container-low transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -423,10 +505,23 @@ export default function Companies() {
                         {company.cidade ? `${company.cidade}${company.uf ? ` - ${company.uf}` : ""}` : "—"}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge className={company.active !== false ? "bg-emerald-500/20 text-emerald-300" : "bg-surface-container-low text-muted-foreground"}>
-                            {company.active !== false ? "Ativa" : "Inativa"}
-                          </Badge>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {(isSuperAdmin || isAdmin) ? (
+                            <>
+                              <Switch
+                                checked={company.active !== false}
+                                onCheckedChange={(checked) => toggleActiveMutation.mutate({ id: company.id, active: checked })}
+                                aria-label={company.active !== false ? "Desativar empresa" : "Ativar empresa"}
+                              />
+                              <Badge className={company.active !== false ? "bg-emerald-500/20 text-emerald-300" : "bg-surface-container-low text-muted-foreground"}>
+                                {company.active !== false ? "Ativa" : "Inativa"}
+                              </Badge>
+                            </>
+                          ) : (
+                            <Badge className={company.active !== false ? "bg-emerald-500/20 text-emerald-300" : "bg-surface-container-low text-muted-foreground"}>
+                              {company.active !== false ? "Ativa" : "Inativa"}
+                            </Badge>
+                          )}
                           {company.has_branch && (
                             <Badge className="bg-blue-500/20 text-blue-300 flex items-center gap-1">
                               <GitBranch className="w-3 h-3" />
@@ -445,6 +540,10 @@ export default function Companies() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openModal(company)}>
                                 <Edit className="w-4 h-4 mr-2" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => toggleActiveMutation.mutate({ id: company.id, active: !(company.active !== false) })}>
+                                {company.active !== false ? <PowerOff className="w-4 h-4 mr-2" /> : <Power className="w-4 h-4 mr-2" />}
+                                {company.active !== false ? "Desativar" : "Ativar"}
                               </DropdownMenuItem>
                               {isSuperAdmin && (
                                 <DropdownMenuItem onClick={() => setDeletingCompany(company)} className="text-red-400">

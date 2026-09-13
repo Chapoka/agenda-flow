@@ -18,7 +18,10 @@ import {
   Calendar,
   Clock,
   BookOpen,
-  XCircle
+  XCircle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { format, parseISO, startOfDay } from "date-fns";
@@ -48,6 +51,7 @@ import CustomerForm from "@/components/customers/CustomerForm";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logger, logCustomer, logCustomersArray } from "@/lib/debugLogger";
 
 export default function Customers() {
@@ -56,6 +60,7 @@ export default function Customers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("list");
+  const [sortOrder, setSortOrder] = useState("name-asc");
   const [showForm, setShowForm] = useState(() => {
     try { return localStorage.getItem("form_draft_customer_open") === "true"; } catch { return false; }
   });
@@ -528,6 +533,31 @@ export default function Customers() {
     return plan?.name || "-";
   };
 
+  const getCompanyNamesStr = (customer) => {
+    const compIds = customer.company_ids?.length ? customer.company_ids : (customer.company_id ? [customer.company_id] : (customer.companyId ? [customer.companyId] : []));
+    return compIds.map(id => getCompanyName(id)).filter(Boolean).join(", ") || "";
+  };
+
+  const sortedCustomers = [...filteredCustomers].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.name || "").localeCompare(b.name || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.name || "").localeCompare(a.name || "", "pt-BR");
+    if (sortOrder === "recent") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    if (sortOrder === "credits-desc") return (b.current_credits || 0) - (a.current_credits || 0);
+    if (sortOrder === "credits-asc") return (a.current_credits || 0) - (b.current_credits || 0);
+    if (sortOrder === "plan-asc") return getPlanName(a).localeCompare(getPlanName(b), "pt-BR");
+    if (sortOrder === "plan-desc") return getPlanName(b).localeCompare(getPlanName(a), "pt-BR");
+    if (sortOrder === "company-asc") return getCompanyNamesStr(a).localeCompare(getCompanyNamesStr(b), "pt-BR");
+    if (sortOrder === "company-desc") return getCompanyNamesStr(b).localeCompare(getCompanyNamesStr(a), "pt-BR");
+    if (sortOrder === "whatsapp-asc") return (a.whatsapp || "").localeCompare(b.whatsapp || "", "pt-BR");
+    if (sortOrder === "whatsapp-desc") return (b.whatsapp || "").localeCompare(a.whatsapp || "", "pt-BR");
+    if (sortOrder === "agendas-desc") return (appointmentStats[b.id]?.total || 0) - (appointmentStats[a.id]?.total || 0);
+    if (sortOrder === "agendas-asc") return (appointmentStats[a.id]?.total || 0) - (appointmentStats[b.id]?.total || 0);
+    if (sortOrder === "status-asc") return (a.status || "").localeCompare(b.status || "", "pt-BR");
+    if (sortOrder === "status-desc") return (b.status || "").localeCompare(a.status || "", "pt-BR");
+    return 0;
+  });
+
   if (showForm) {
     return (
       <div className={cn("min-h-screen", theme.pageBg)}>
@@ -607,13 +637,39 @@ export default function Customers() {
                 </button>
               ))}
             </div>
-            <div className="hidden sm:flex border border-outline-variant rounded-xl overflow-hidden flex-shrink-0">
-              <button onClick={() => setViewMode("grid")} className={cn("px-3 py-2 transition-colors", viewMode === "grid" ? "bg-branding-primary text-white" : "hover:bg-surface-container-low")}>
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button onClick={() => setViewMode("list")} className={cn("px-3 py-2 transition-colors", viewMode === "list" ? "bg-branding-primary text-white" : "hover:bg-surface-container-low")}>
-                <List className="w-4 h-4" />
-              </button>
+            <div className="flex gap-2 ml-auto">
+              <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger className="w-44 sm:w-48 rounded-xl border-outline-variant text-sm h-9">
+                  <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground flex-shrink-0" />
+                  <SelectValue placeholder="Ordenar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name-asc">Cliente A → Z</SelectItem>
+                  <SelectItem value="name-desc">Cliente Z → A</SelectItem>
+                  <SelectItem value="plan-asc">Plano A → Z</SelectItem>
+                  <SelectItem value="plan-desc">Plano Z → A</SelectItem>
+                  <SelectItem value="company-asc">Empresa A → Z</SelectItem>
+                  <SelectItem value="company-desc">Empresa Z → A</SelectItem>
+                  <SelectItem value="whatsapp-asc">WhatsApp A → Z</SelectItem>
+                  <SelectItem value="whatsapp-desc">WhatsApp Z → A</SelectItem>
+                  <SelectItem value="credits-desc">Créditos ↓</SelectItem>
+                  <SelectItem value="credits-asc">Créditos ↑</SelectItem>
+                  <SelectItem value="agendas-desc">Agendas ↓</SelectItem>
+                  <SelectItem value="agendas-asc">Agendas ↑</SelectItem>
+                  <SelectItem value="status-asc">Status A → Z</SelectItem>
+                  <SelectItem value="status-desc">Status Z → A</SelectItem>
+                  <SelectItem value="recent">Mais recentes ↓</SelectItem>
+                  <SelectItem value="oldest">Mais antigos ↑</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="hidden sm:flex border border-outline-variant rounded-xl overflow-hidden flex-shrink-0">
+                <button onClick={() => setViewMode("grid")} className={cn("px-3 py-2 transition-colors", viewMode === "grid" ? "bg-branding-primary text-white" : "hover:bg-surface-container-low")}>
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button onClick={() => setViewMode("list")} className={cn("px-3 py-2 transition-colors", viewMode === "list" ? "bg-branding-primary text-white" : "hover:bg-surface-container-low")}>
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex gap-2 sm:gap-3 mt-3">
@@ -673,7 +729,7 @@ export default function Customers() {
           </div>
         ) : effectiveViewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {filteredCustomers.map(customer => (
+            {sortedCustomers.map(customer => (
               <div key={customer.id} className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 p-4 sm:p-6 hover:shadow-md transition-all">
                 <div className="flex items-start justify-between mb-3 sm:mb-4">
                   <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -789,18 +845,18 @@ export default function Customers() {
             <table className="w-full text-sm min-w-[500px]">
               <thead className="bg-surface-container-low/50 border-b border-outline-variant/30">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant">Cliente</th>
-                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden sm:table-cell">Plano</th>
-                  {showCompanyColumn && <th className="text-left px-4 py-3 font-medium text-on-surface-variant">Empresa</th>}
-                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden md:table-cell">WhatsApp</th>
-                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant">Créditos</th>
-                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden md:table-cell">Agendas</th>
-                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant">Status</th>
+                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "name-asc" ? "name-desc" : "name-asc")}> <span className="inline-flex items-center gap-1">Cliente {sortOrder === "name-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "name-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden sm:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "plan-asc" ? "plan-desc" : "plan-asc")}><span className="inline-flex items-center gap-1">Plano {sortOrder === "plan-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "plan-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  {showCompanyColumn && <th className="text-left px-4 py-3 font-medium text-on-surface-variant cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "company-asc" ? "company-desc" : "company-asc")}><span className="inline-flex items-center gap-1">Empresa {sortOrder === "company-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "company-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>}
+                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "whatsapp-asc" ? "whatsapp-desc" : "whatsapp-asc")}><span className="inline-flex items-center gap-1">WhatsApp {sortOrder === "whatsapp-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "whatsapp-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "credits-desc" ? "credits-asc" : "credits-desc")}><span className="inline-flex items-center gap-1">Créditos {sortOrder === "credits-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "credits-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "agendas-desc" ? "agendas-asc" : "agendas-desc")}><span className="inline-flex items-center gap-1">Agendas {sortOrder === "agendas-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "agendas-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="text-left px-4 py-3 font-medium text-on-surface-variant cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "status-asc" ? "status-desc" : "status-asc")}><span className="inline-flex items-center gap-1">Status {sortOrder === "status-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "status-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
                   <th className="text-right px-4 py-3 font-medium text-on-surface-variant">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {filteredCustomers.map(customer => (
+                {sortedCustomers.map(customer => (
                   <tr key={customer.id} className="hover:bg-surface-container-low/50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">

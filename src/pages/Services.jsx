@@ -16,6 +16,12 @@ import {
   Package,
   Power,
   PowerOff,
+  LayoutGrid,
+  List,
+  Building2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,6 +109,8 @@ export default function Services() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterServiceType, setFilterServiceType] = useState("all");
+  const [viewMode, setViewMode] = useState("grid");
+  const [sortOrder, setSortOrder] = useState("name-asc");
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [deletingService, setDeletingService] = useState(null);
@@ -119,6 +127,13 @@ export default function Services() {
     queryFn: () => db.entities.Service.list("-created_at"),
     enabled: ready,
   });
+
+  const { data: allCompanies = [] } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => db.entities.Company.list(),
+    enabled: ready && isSuperAdmin,
+  });
+  const getCompanyName = (cid) => allCompanies.find(c => c.id === cid)?.name || "—";
 
   const { data: allOverrides = [] } = useQuery({
     queryKey: ["company_service_overrides", effectiveCompanyId],
@@ -165,15 +180,68 @@ export default function Services() {
 
   const filteredServices = services.filter(s => {
     const matchSearch = !search || s.name?.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = filterCategory === "all" || s.category === filterCategory;
+    const categoryLabel = CATEGORIES.find(c => c.value === filterCategory)?.label || filterCategory;
+    const matchCategory = filterCategory === "all" || s.category === filterCategory || s.category === categoryLabel || s.category?.toLowerCase() === categoryLabel?.toLowerCase();
     const matchServiceType = filterServiceType === "all" || s.service_type === filterServiceType;
     return matchSearch && matchCategory && matchServiceType;
+  });
+
+  const sortedServices = [...filteredServices].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.name || "").localeCompare(b.name || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.name || "").localeCompare(a.name || "", "pt-BR");
+    if (sortOrder === "price-desc") return (b.price || 0) - (a.price || 0);
+    if (sortOrder === "price-asc") return (a.price || 0) - (b.price || 0);
+    if (sortOrder === "recent") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    if (sortOrder === "categoria-asc") return (a.category || "").localeCompare(b.category || "", "pt-BR");
+    if (sortOrder === "categoria-desc") return (b.category || "").localeCompare(a.category || "", "pt-BR");
+    if (sortOrder === "tipo-asc") return (a.type || "").localeCompare(b.type || "", "pt-BR");
+    if (sortOrder === "tipo-desc") return (b.type || "").localeCompare(a.type || "", "pt-BR");
+    if (sortOrder === "empresa-asc") return (a.company_id ? getCompanyName(a.company_id) : "Global").localeCompare(b.company_id ? getCompanyName(b.company_id) : "Global", "pt-BR");
+    if (sortOrder === "empresa-desc") return (b.company_id ? getCompanyName(b.company_id) : "Global").localeCompare(a.company_id ? getCompanyName(a.company_id) : "Global", "pt-BR");
+    if (sortOrder === "duracao-asc") {
+      const av = a.type === "product" ? (a.quantidade_estoque || 0) : (a.duration_mins || 0);
+      const bv = b.type === "product" ? (b.quantidade_estoque || 0) : (b.duration_mins || 0);
+      return av - bv;
+    }
+    if (sortOrder === "duracao-desc") {
+      const av = a.type === "product" ? (a.quantidade_estoque || 0) : (a.duration_mins || 0);
+      const bv = b.type === "product" ? (b.quantidade_estoque || 0) : (b.duration_mins || 0);
+      return bv - av;
+    }
+    if (sortOrder === "status-asc") return (getEffectiveActive(a) ? 1 : 0) - (getEffectiveActive(b) ? 1 : 0);
+    if (sortOrder === "status-desc") return (getEffectiveActive(b) ? 1 : 0) - (getEffectiveActive(a) ? 1 : 0);
+    return 0;
+  });
+
+  const sortedCombos = [...combos].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.name || "").localeCompare(b.name || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.name || "").localeCompare(a.name || "", "pt-BR");
+    if (sortOrder === "price-desc") return (b.combo_price || 0) - (a.combo_price || 0);
+    if (sortOrder === "price-asc") return (a.combo_price || 0) - (b.combo_price || 0);
+    if (sortOrder === "recent") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    if (sortOrder === "empresa-asc") return (a.company_id ? getCompanyName(a.company_id) : "").localeCompare(b.company_id ? getCompanyName(b.company_id) : "", "pt-BR");
+    if (sortOrder === "empresa-desc") return (b.company_id ? getCompanyName(b.company_id) : "").localeCompare(a.company_id ? getCompanyName(a.company_id) : "", "pt-BR");
+    if (sortOrder === "descricao-asc") return (a.description || "").localeCompare(b.description || "", "pt-BR");
+    if (sortOrder === "descricao-desc") return (b.description || "").localeCompare(a.description || "", "pt-BR");
+    if (sortOrder === "servicos-asc") {
+      const aCount = allComboItems.filter(ci => ci.combo_id === a.id).length;
+      const bCount = allComboItems.filter(ci => ci.combo_id === b.id).length;
+      return aCount - bCount;
+    }
+    if (sortOrder === "servicos-desc") {
+      const aCount = allComboItems.filter(ci => ci.combo_id === a.id).length;
+      const bCount = allComboItems.filter(ci => ci.combo_id === b.id).length;
+      return bCount - aCount;
+    }
+    return 0;
   });
 
   const createService = useMutation({
     mutationFn: (data) => db.entities.Service.create({ ...data, company_id: effectiveCompanyId }),
     onSuccess: () => {
-      queryClient.invalidateQueries(["services"]);
+      queryClient.invalidateQueries({ queryKey: ["services"] });
       toast.success("Serviço criado!");
       setShowServiceForm(false);
       setServiceForm(EMPTY_SERVICE);
@@ -184,7 +252,7 @@ export default function Services() {
   const updateService = useMutation({
     mutationFn: ({ id, ...data }) => db.entities.Service.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["services"]);
+      queryClient.invalidateQueries({ queryKey: ["services"] });
       toast.success("Serviço atualizado!");
       setShowServiceForm(false);
       setEditingService(null);
@@ -196,7 +264,7 @@ export default function Services() {
   const toggleServiceActive = useMutation({
     mutationFn: async ({ id, active }) => {
       const svc = allServices.find(s => s.id === id);
-      if (!svc.company_id && effectiveCompanyId) {
+      if (!svc?.company_id && effectiveCompanyId) {
         const existing = allOverrides.find(o => o.service_id === id && o.company_id === effectiveCompanyId);
         if (existing) {
           await supabase.from("company_service_overrides").update({ active }).eq("id", existing.id);
@@ -207,13 +275,13 @@ export default function Services() {
         await db.entities.Service.update(id, { active });
       }
     },
-    onSuccess: () => { queryClient.invalidateQueries(["services"]); queryClient.invalidateQueries(["company_service_overrides"]); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["services"] }); queryClient.invalidateQueries({ queryKey: ["company_service_overrides"] }); },
   });
 
   const deleteService = useMutation({
     mutationFn: (id) => db.entities.Service.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(["services"]);
+      queryClient.invalidateQueries({ queryKey: ["services"] });
       toast.success("Serviço removido!");
       setDeletingService(null);
     },
@@ -239,8 +307,8 @@ export default function Services() {
       return combo;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["service_combos"]);
-      queryClient.invalidateQueries(["service_combo_items"]);
+      queryClient.invalidateQueries({ queryKey: ["service_combos"] });
+      queryClient.invalidateQueries({ queryKey: ["service_combo_items"] });
       toast.success("Combo criado!");
       setShowComboForm(false);
       setComboForm(EMPTY_COMBO);
@@ -268,8 +336,8 @@ export default function Services() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["service_combos"]);
-      queryClient.invalidateQueries(["service_combo_items"]);
+      queryClient.invalidateQueries({ queryKey: ["service_combos"] });
+      queryClient.invalidateQueries({ queryKey: ["service_combo_items"] });
       toast.success("Combo atualizado!");
       setShowComboForm(false);
       setEditingCombo(null);
@@ -294,7 +362,7 @@ export default function Services() {
       return db.entities.ServiceCombo.delete(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["service_combos"]);
+      queryClient.invalidateQueries({ queryKey: ["service_combos"] });
       toast.success("Combo removido!");
       setDeletingCombo(null);
     },
@@ -382,14 +450,14 @@ export default function Services() {
           className="bg-branding-primary text-white hover:opacity-90"
         >
           <Plus className="w-4 h-4 mr-2" />
-Novo Item
+          Novo Serviço / Produto
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { label: "Serviços Ativos", value: services.filter(s => getEffectiveActive(s)).length, icon: Scissors, color: "text-blue-400" },
+          { label: "Itens Ativos", value: services.filter(s => getEffectiveActive(s)).length, icon: Scissors, color: "text-blue-400" },
           { label: "Inativos", value: services.filter(s => !getEffectiveActive(s)).length, icon: PowerOff, color: "text-muted-foreground" },
           { label: "Preço Médio", value: `R$ ${avgPrice}`, icon: DollarSign, color: "text-emerald-400" },
           { label: "Margem Média", value: avgMargin !== "-" ? `${avgMargin}%` : "-", icon: DollarSign, color: "text-blue-400" },
@@ -462,12 +530,52 @@ Novo Item
                 <SelectItem value="Pacote de serviço">Pacote de serviço</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={sortOrder} onValueChange={setSortOrder}>
+              <SelectTrigger className="w-44">
+                <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Ordenar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Item A → Z</SelectItem>
+                <SelectItem value="name-desc">Item Z → A</SelectItem>
+                <SelectItem value="categoria-asc">Categoria A → Z</SelectItem>
+                <SelectItem value="categoria-desc">Categoria Z → A</SelectItem>
+                <SelectItem value="tipo-asc">Tipo A → Z</SelectItem>
+                <SelectItem value="tipo-desc">Tipo Z → A</SelectItem>
+                <SelectItem value="empresa-asc">Empresa A → Z</SelectItem>
+                <SelectItem value="empresa-desc">Empresa Z → A</SelectItem>
+                <SelectItem value="duracao-asc">Duração/Estoque ↑</SelectItem>
+                <SelectItem value="duracao-desc">Duração/Estoque ↓</SelectItem>
+                <SelectItem value="price-desc">Maior preço ↓</SelectItem>
+                <SelectItem value="price-asc">Menor preço ↑</SelectItem>
+                <SelectItem value="status-asc">Status A → Z</SelectItem>
+                <SelectItem value="status-desc">Status Z → A</SelectItem>
+                <SelectItem value="recent">Mais recentes ↓</SelectItem>
+                <SelectItem value="oldest">Mais antigos ↑</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="inline-flex rounded-xl border border-outline-variant bg-card p-1 shadow-sm self-start sm:self-auto">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "grid" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                title="Visualização em grade"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "list" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                title="Visualização em lista"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          {/* Service Cards */}
+          {/* Service Cards / List */}
           {loadingServices ? (
             <div className="text-center py-12 text-muted-foreground">Carregando...</div>
-          ) : filteredServices.length === 0 ? (
+          ) : sortedServices.length === 0 ? (
             <div className="text-center py-12">
               <Scissors className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
               <p className="text-muted-foreground">Nenhum serviço encontrado</p>
@@ -478,9 +586,91 @@ Novo Item
                 <Plus className="w-4 h-4 mr-2" /> Criar primeiro serviço
               </Button>
             </div>
+          ) : viewMode === "list" ? (
+            <div className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-background border-b border-outline-variant/30">
+                    <tr className="text-left text-muted-foreground">
+                      <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "name-asc" ? "name-desc" : "name-asc")}><span className="inline-flex items-center gap-1">Item {sortOrder === "name-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "name-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "categoria-asc" ? "categoria-desc" : "categoria-asc")}><span className="inline-flex items-center gap-1">Categoria {sortOrder === "categoria-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "categoria-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      <th className="px-4 py-3 font-medium hidden lg:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "tipo-asc" ? "tipo-desc" : "tipo-asc")}><span className="inline-flex items-center gap-1">Tipo {sortOrder === "tipo-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "tipo-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      {isSuperAdmin && <th className="px-4 py-3 font-medium hidden lg:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "empresa-asc" ? "empresa-desc" : "empresa-asc")}><span className="inline-flex items-center gap-1">Empresa {sortOrder === "empresa-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "empresa-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>}
+                      <th className="px-4 py-3 font-medium hidden sm:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "duracao-asc" ? "duracao-desc" : "duracao-asc")}><span className="inline-flex items-center gap-1">Duração / Estoque {sortOrder === "duracao-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "duracao-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "price-desc" ? "price-asc" : "price-desc")}><span className="inline-flex items-center gap-1">Preço {sortOrder === "price-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "price-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "status-asc" ? "status-desc" : "status-asc")}><span className="inline-flex items-center gap-1">Status {sortOrder === "status-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "status-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      <th className="px-4 py-3 font-medium text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/30">
+                    {sortedServices.map(svc => {
+                      const cat = getCategoryInfo(svc.category);
+                      const isActive = getEffectiveActive(svc);
+                      return (
+                        <tr key={svc.id} className={`hover:bg-surface-container-low transition-colors ${!isActive ? "opacity-60" : ""}`}>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-branding-primary/10 flex items-center justify-center flex-shrink-0">
+                                {svc.type === "product" ? <Package className="w-4 h-4 text-branding-primary" /> : <Scissors className="w-4 h-4 text-branding-primary" />}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-on-surface truncate flex items-center gap-1.5">
+                                  {svc.name}
+                                  {!svc.company_id && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30">Global</Badge>}
+                                  {svc.service_type === "Pacote de serviço" && <Badge variant="outline" className="text-[10px] bg-purple-500/20 text-purple-300 border-purple-500/30 hidden sm:inline-flex">Pacote</Badge>}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate md:hidden">{cat.label} • R$ {Number(svc.price || 0).toFixed(2).replace(".", ",")}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 hidden md:table-cell">
+                            <Badge variant="outline" className={cn("text-xs", cat.color)}>{cat.label}</Badge>
+                          </td>
+                          <td className="px-4 py-3 hidden lg:table-cell">
+                            <Badge variant="outline" className={svc.type === "product" ? "bg-emerald-500/10 text-emerald-700 border-emerald-200" : "bg-blue-500/10 text-blue-300 border-blue-500/30"}>
+                              {svc.type === "product" ? "Produto" : "Serviço"}
+                            </Badge>
+                          </td>
+                          {isSuperAdmin && (
+                            <td className="px-4 py-3 hidden lg:table-cell">
+                              {!svc.company_id ? <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-300 border-amber-500/30">Global</Badge> : <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(svc.company_id)}</Badge>}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                            {svc.type === "product" ? `${svc.quantidade_estoque || 0} ${svc.unidade_medida || "un"}` : (() => { const dur = svc.duration_mins || 0; const h = Math.floor(dur/60); const m = dur%60; if (h>0 && m>0) return `${h}h ${m}min`; if (h>0) return `${h}h`; return `${m}min`; })()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-semibold text-on-surface">R$ {Number(svc.price || 0).toFixed(2).replace(".", ",")}</span>
+                            {svc.preco_custo > 0 && <span className="text-xs text-muted-foreground block hidden lg:block">Custo R$ {Number(svc.preco_custo).toFixed(2).replace(".", ",")}</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Switch checked={isActive} onCheckedChange={(checked) => toggleServiceActive.mutate({ id: svc.id, active: checked })} />
+                              <Badge className={isActive ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : "bg-surface-container-low text-muted-foreground"}>{isActive ? "Ativo" : "Inativo"}</Badge>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditService(svc)}><Edit className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => toggleServiceActive.mutate({ id: svc.id, active: !isActive })}>{!isActive ? <><Power className="w-4 h-4 mr-2" /> Ativar</> : <><PowerOff className="w-4 h-4 mr-2" /> Desativar</>}</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setDeletingService(svc)} className="text-red-400"><Trash2 className="w-4 h-4 mr-2" /> Excluir</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredServices.map(svc => {
+              {sortedServices.map(svc => {
                 const cat = getCategoryInfo(svc.category);
                 const isActive = getEffectiveActive(svc);
                 return (
@@ -502,8 +692,8 @@ Novo Item
                           )}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-on-surface text-sm">{svc.name} {!svc.company_id && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30 ml-1">Global</Badge>}</h3>
-                          <div className="flex items-center gap-1 mt-0.5">
+                          <h3 className="font-semibold text-on-surface text-sm flex items-center gap-1.5 flex-wrap">{svc.name} {!svc.company_id ? <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30">Global</Badge> : isSuperAdmin && <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(svc.company_id)}</Badge>}</h3>
+                          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                             <Badge variant="outline" className={cn("text-[10px]", cat.color)}>
                               {cat.label}
                             </Badge>
@@ -512,6 +702,7 @@ Novo Item
                                 Pacote
                               </Badge>
                             )}
+                            {isSuperAdmin && svc.company_id && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30 md:hidden inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(svc.company_id)}</Badge>}
                           </div>
                         </div>
                       </div>
@@ -578,7 +769,14 @@ Novo Item
                       ) : (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="w-3.5 h-3.5" />
-                          {Math.floor((svc.duration_mins || 0) / 60)}h{(svc.duration_mins || 0) % 60 > 0 ? ` ${(svc.duration_mins || 0) % 60}min` : ""}
+                          {(() => {
+                            const dur = svc.duration_mins || 0;
+                            const h = Math.floor(dur / 60);
+                            const m = dur % 60;
+                            if (h > 0 && m > 0) return `${h}h ${m}min`;
+                            if (h > 0) return `${h}h`;
+                            return `${m}min`;
+                          })()}
                         </div>
                       )}
                       <div className="text-right">
@@ -613,7 +811,23 @@ Novo Item
       {/* COMBOS TAB */}
       {tab === "combos" && (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="inline-flex rounded-xl border border-outline-variant bg-card p-1 shadow-sm self-start">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "grid" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                title="Visualização em grade"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "list" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                title="Visualização em lista"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
             <Button
               onClick={() => { setEditingCombo(null); setComboForm(EMPTY_COMBO); setShowComboForm(true); }}
               className="bg-secondary text-white hover:bg-secondary/80"
@@ -625,15 +839,73 @@ Novo Item
 
           {loadingCombos ? (
             <div className="text-center py-12 text-muted-foreground">Carregando...</div>
-          ) : combos.length === 0 ? (
+          ) : sortedCombos.length === 0 ? (
             <div className="text-center py-12">
               <Package className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
               <p className="text-muted-foreground">Nenhum combo criado</p>
               <p className="text-xs text-muted-foreground mt-1">Combine serviços e ofereça um preço especial</p>
             </div>
+          ) : viewMode === "list" ? (
+            <div className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-background border-b border-outline-variant/30">
+                    <tr className="text-left text-muted-foreground">
+                      <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "name-asc" ? "name-desc" : "name-asc")}><span className="inline-flex items-center gap-1">Combo {sortOrder === "name-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "name-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      {isSuperAdmin && <th className="px-4 py-3 font-medium hidden lg:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "empresa-asc" ? "empresa-desc" : "empresa-asc")}><span className="inline-flex items-center gap-1">Empresa {sortOrder === "empresa-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "empresa-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>}
+                      <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "servicos-asc" ? "servicos-desc" : "servicos-asc")}><span className="inline-flex items-center gap-1">Serviços inclusos {sortOrder === "servicos-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "servicos-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      <th className="px-4 py-3 font-medium hidden sm:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "descricao-asc" ? "descricao-desc" : "descricao-asc")}><span className="inline-flex items-center gap-1">Descrição {sortOrder === "descricao-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "descricao-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "price-desc" ? "price-asc" : "price-desc")}><span className="inline-flex items-center gap-1">Preço {sortOrder === "price-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "price-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                      <th className="px-4 py-3 font-medium text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/30">
+                    {sortedCombos.map(combo => {
+                      const comboItems = allComboItems.filter(ci => ci.combo_id === combo.id);
+                      const svcNames = comboItems.map(ci => allServices.find(s => s.id === ci.service_id)?.name).filter(Boolean);
+                      return (
+                        <tr key={combo.id} className="hover:bg-surface-container-low transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                                <Package className="w-4 h-4 text-purple-400" />
+                              </div>
+                              <span className="font-medium text-on-surface">{combo.name}</span>
+                            </div>
+                          </td>
+                          {isSuperAdmin && (
+                            <td className="px-4 py-3 hidden lg:table-cell">
+                              <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(combo.company_id)}</Badge>
+                            </td>
+                          )}
+                          <td className="px-4 py-3 hidden md:table-cell">
+                            <div className="flex flex-wrap gap-1 max-w-[280px]">
+                              {svcNames.length ? svcNames.map(n => <span key={n} className="text-[11px] bg-branding-primary/10 text-branding-primary px-2 py-0.5 rounded-full border border-branding-primary/20">{n}</span>) : <span className="text-xs text-muted-foreground">—</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell max-w-[220px] truncate">{combo.description || "—"}</td>
+                          <td className="px-4 py-3 font-semibold text-purple-400">R$ {Number(combo.combo_price || 0).toFixed(2).replace(".", ",")}</td>
+                          <td className="px-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditCombo(combo)}><Edit className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setDeletingCombo(combo)} className="text-red-400"><Trash2 className="w-4 h-4 mr-2" /> Excluir</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           ) : (
             <div className="space-y-3">
-              {combos.map(combo => (
+              {sortedCombos.map(combo => (
                 <div key={combo.id} className="rounded-xl border p-4 transition-all hover:shadow-md" style={{ background: theme.cardBg, borderColor: theme.cardBorder }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -641,8 +913,9 @@ Novo Item
                         <Package className="w-5 h-5 text-purple-400" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-on-surface">{combo.name}</h3>
+                        <h3 className="font-semibold text-on-surface flex items-center gap-2 flex-wrap">{combo.name} {isSuperAdmin && combo.company_id && <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(combo.company_id)}</Badge>}</h3>
                         {combo.description && <p className="text-xs text-muted-foreground">{combo.description}</p>}
+                        {isSuperAdmin && combo.company_id && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30 mt-1 inline-flex items-center gap-1 md:hidden"><Building2 className="w-3 h-3" />{getCompanyName(combo.company_id)}</Badge>}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -677,16 +950,16 @@ Novo Item
       <Dialog open={showServiceForm} onOpenChange={setShowServiceForm}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>{editingService ? "Editar Item" : "Novo Item"}</DialogTitle>
+            <DialogTitle>{editingService ? "Editar Serviço / Produto" : "Novo Serviço / Produto"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Tipo: Servio ou Produto */}
+            {/* Tipo: Serviço ou Produto */}
             <div>
               <Label>Tipo</Label>
               <Select value={serviceForm.type} onValueChange={v => setServiceForm(f => ({ ...f, type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="service">Servio</SelectItem>
+                  <SelectItem value="service">Serviço</SelectItem>
                   <SelectItem value="product">Produto</SelectItem>
                 </SelectContent>
               </Select>

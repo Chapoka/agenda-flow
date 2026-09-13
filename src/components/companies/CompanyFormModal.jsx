@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/dbClient";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Search, Loader2, Building2, MapPin, Phone, User, MessageCircle, Image } from "lucide-react";
 import { toast } from "sonner";
 import { formatPhone, formatCPF, formatCNPJ } from "@/utils/formatters";
@@ -15,7 +17,7 @@ const emptyForm = {
   owner_email: "", owner_name: "", owner_phone: "", owner_cpf: "", active: true, has_branch: false,
 };
 
-const ESTABLISHMENT_TYPES = {
+const FALLBACK_ESTABLISHMENT_TYPES = {
   barbearia: "Barbearia",
   clinica_estetica: "Clínica / Estética",
   salao_beleza: "Empresa de Beleza",
@@ -65,6 +67,17 @@ export default function CompanyFormModal({ editing, form, setForm, onClose, onSa
   const [looking, setLooking] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+
+  const { data: establishmentTypesData = [] } = useQuery({
+    queryKey: ["establishment_types"],
+    queryFn: () => db.entities.EstablishmentType.list(),
+  });
+  const ESTABLISHMENT_TYPES = establishmentTypesData.length
+    ? Object.fromEntries(establishmentTypesData.map(t => [t.slug, t.name]))
+    : FALLBACK_ESTABLISHMENT_TYPES;
+  const establishmentTypesList = establishmentTypesData.length
+    ? establishmentTypesData.map(t => ({ slug: t.slug, name: t.name }))
+    : Object.entries(FALLBACK_ESTABLISHMENT_TYPES).map(([slug, name]) => ({ slug, name }));
 
   useEffect(() => {
     if (editing) {
@@ -263,10 +276,11 @@ export default function CompanyFormModal({ editing, form, setForm, onClose, onSa
                 }`}
               >
                 <option value="">Selecione o tipo</option>
-                {Object.entries(ESTABLISHMENT_TYPES).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
+                {establishmentTypesList.map(({ slug, name }) => (
+                  <option key={slug} value={slug}>{name}</option>
                 ))}
               </select>
+              <p className="text-[11px] text-muted-foreground">Tipos gerenciados em Configurações → Tipos de Estabelecimento (super admin)</p>
             </div>
 
             {/* Logo upload */}
@@ -482,14 +496,20 @@ export default function CompanyFormModal({ editing, form, setForm, onClose, onSa
         {/* Status */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-on-surface">Status</h4>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="active" checked={form.active} onChange={(e) => setForm((prev) => ({ ...prev, active: e.target.checked }))} className="w-4 h-4" />
-              <Label htmlFor="active">Empresa ativa</Label>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between rounded-xl border border-outline-variant/30 bg-background px-4 py-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="active" className="text-sm font-medium cursor-pointer">Empresa ativa</Label>
+                <p className="text-xs text-muted-foreground">{form.active ? "Empresa visível e operacional" : "Empresa desativada / inativa"}</p>
+              </div>
+              <Switch id="active" checked={!!form.active} onCheckedChange={(checked) => setForm((prev) => ({ ...prev, active: checked }))} />
             </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="has_branch" checked={form.has_branch} onChange={(e) => setForm((prev) => ({ ...prev, has_branch: e.target.checked }))} className="w-4 h-4" />
-              <Label htmlFor="has_branch">Possui filial</Label>
+            <div className="flex items-center justify-between rounded-xl border border-outline-variant/30 bg-background px-4 py-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="has_branch" className="text-sm font-medium cursor-pointer">Possui filial</Label>
+                <p className="text-xs text-muted-foreground">Indica que a empresa tem filiais</p>
+              </div>
+              <Switch id="has_branch" checked={!!form.has_branch} onCheckedChange={(checked) => setForm((prev) => ({ ...prev, has_branch: checked }))} />
             </div>
           </div>
         </div>

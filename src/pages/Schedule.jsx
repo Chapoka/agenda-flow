@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { db } from "@/api/dbClient";
 import { supabase } from "@/lib/supabaseClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Calendar, CalendarDays, CalendarRange, Building2, Users, Clock, AlertTriangle, Ban } from "lucide-react";
+import { Plus, Calendar, CalendarDays, CalendarRange, Building2, Users, UserCog, Clock, AlertTriangle, Ban, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import WeeklyCalendar from "@/components/schedule/WeeklyCalendar";
@@ -81,6 +81,8 @@ export default function Schedule() {
   const companyId = currentUser?.company_id;
   const [selectedCompanyId, setSelectedCompanyId] = useState("all");
   const [selectedCustomerId, setSelectedCustomerId] = useState("all");
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState("all");
+  const [agendaListView, setAgendaListView] = useState("grade");
 
   const { data: companies = [] } = useQuery({
     queryKey: ["companies"],
@@ -170,6 +172,23 @@ export default function Schedule() {
   const { data: allUsers = [] } = useQuery({
     queryKey: ["users"],
     queryFn: () => db.entities.User.list(),
+  });
+
+  // Profissionais para filtro (visível para admin/super_admin)
+  const professionals = allUsers.filter(u => {
+    const r = u.role === "teacher" ? "profissional" : u.role;
+    const isProf = r === "profissional" || u.is_professional === true;
+    if (!isProf) return false;
+    // Filtra por empresa selecionada quando super_admin filtra por empresa
+    if (selectedCompanyId !== "all") {
+      const uIds = u.company_ids || (u.company_id ? [u.company_id] : []);
+      return uIds.includes(selectedCompanyId);
+    }
+    if (!isSuperAdmin && userCompanyIds.length > 0) {
+      const uIds = u.company_ids || (u.company_id ? [u.company_id] : []);
+      return uIds.includes(companyId) || uIds.some(id => userCompanyIds.includes(id));
+    }
+    return true;
   });
 
   const { data: punchCards = [] } = useQuery({
@@ -497,10 +516,12 @@ export default function Schedule() {
     toast.success(`${count} ${count === 1 ? "agendamento excluído" : "agendamentos excluídos"} com sucesso!`);
   };
 
-  // Apply customer filter on the client side
-  const filteredAppointments = selectedCustomerId !== "all"
-    ? appointments.filter(l => l.customer_id === selectedCustomerId)
-    : appointments;
+  // Apply customer + professional filters on the client side
+  const filteredAppointments = appointments.filter(l => {
+    const matchCustomer = selectedCustomerId === "all" || l.customer_id === selectedCustomerId;
+    const matchProfessional = selectedProfessionalId === "all" || l.professional_id === selectedProfessionalId || l.teacher_id === selectedProfessionalId;
+    return matchCustomer && matchProfessional;
+  });
 
   const handleRepeatAppointment = async (appointment, weeks) => {
     setIsCreatingRepeat(true);
@@ -604,6 +625,20 @@ export default function Schedule() {
                 ))}
               </SelectContent>
             </Select>
+            {(isAdmin || isSuperAdmin) && (
+              <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
+                <SelectTrigger className="w-36 sm:w-48 rounded-xl border-outline-variant/30">
+                  <UserCog className="w-4 h-4 mr-2 text-on-surface-variant flex-shrink-0" />
+                  <SelectValue placeholder="Profissionais" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os profissionais</SelectItem>
+                  {professionals.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.full_name || p.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {(isAdmin || isSuperAdmin) && (
               <Button
                 variant="outline"
@@ -709,6 +744,93 @@ export default function Schedule() {
             onDeleteAppointments={handleBulkDeleteAppointments}
           />
         )}
+
+        {/* Agenda - Grade / Lista para super_admin e admin */}
+        <div className="mt-8 bg-card rounded-2xl shadow-sm border border-outline-variant/30 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h3 className="text-lg font-semibold text-on-surface flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-branding-primary" />
+              Lista de Agendamentos
+              <span className="text-sm font-normal text-muted-foreground">({filteredAppointments.length})</span>
+            </h3>
+            <div className="inline-flex rounded-xl border border-outline-variant bg-card p-1 shadow-sm self-start">
+              <button
+                onClick={() => setAgendaListView("grade")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${agendaListView === "grade" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                title="Visualização em grade"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Grade
+              </button>
+              <button
+                onClick={() => setAgendaListView("lista")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${agendaListView === "lista" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                title="Visualização em lista"
+              >
+                <List className="w-4 h-4" />
+                Lista
+              </button>
+            </div>
+          </div>
+
+          {filteredAppointments.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum agendamento encontrado</p>
+          ) : agendaListView === "grade" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredAppointments.map(appointment => {
+                const customer = customers.find(c => c.id === appointment.customer_id);
+                const professional = allUsers.find(u => u.id === appointment.professional_id);
+                const company = companies.find(c => c.id === appointment.company_id);
+                return (
+                  <div key={appointment.id} onClick={() => setSelectedAppointment(appointment)} className="rounded-xl border border-outline-variant/30 p-4 hover:shadow-md transition-all cursor-pointer bg-background">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="font-medium text-on-surface truncate">{appointment.customer_name || customer?.name || "Cliente"}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${appointment.status === "present" ? "bg-emerald-500/20 text-emerald-400" : appointment.status === "cancelled" ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-300"}`}>{appointment.status}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{appointment.date} {appointment.start_time} - {appointment.end_time}</p>
+                    {professional && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><UserCog className="w-3.5 h-3.5" />{professional.full_name || professional.email}</p>}
+                    {isSuperAdmin && company && <p className="text-xs inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30"><Building2 className="w-3 h-3" />{company.name}</p>}
+                    <p className="text-xs text-muted-foreground mt-1">{appointment.service_category || appointment.modality || "Serviço"}</p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-background border-b border-outline-variant/30">
+                  <tr className="text-left text-muted-foreground">
+                    <th className="px-4 py-3 font-medium">Cliente</th>
+                    <th className="px-4 py-3 font-medium hidden md:table-cell">Profissional</th>
+                    {isSuperAdmin && <th className="px-4 py-3 font-medium hidden lg:table-cell">Empresa</th>}
+                    <th className="px-4 py-3 font-medium hidden sm:table-cell">Data</th>
+                    <th className="px-4 py-3 font-medium">Horário</th>
+                    <th className="px-4 py-3 font-medium hidden md:table-cell">Serviço</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/30">
+                  {filteredAppointments.map(appointment => {
+                    const customer = customers.find(c => c.id === appointment.customer_id);
+                    const professional = allUsers.find(u => u.id === appointment.professional_id);
+                    const company = companies.find(c => c.id === appointment.company_id);
+                    return (
+                      <tr key={appointment.id} onClick={() => setSelectedAppointment(appointment)} className="hover:bg-surface-container-low cursor-pointer">
+                        <td className="px-4 py-3 font-medium text-on-surface">{appointment.customer_name || customer?.name || "-"}</td>
+                        <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{professional?.full_name || "-"}</td>
+                        {isSuperAdmin && <td className="px-4 py-3 hidden lg:table-cell">{company ? <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full px-2 py-0.5"><Building2 className="w-3 h-3" />{company.name}</span> : <span className="text-muted-foreground">—</span>}</td>}
+                        <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{appointment.date}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{appointment.start_time} - {appointment.end_time}</td>
+                        <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{appointment.service_category || appointment.modality || "-"}</td>
+                        <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${appointment.status === "present" ? "bg-emerald-500/20 text-emerald-400" : appointment.status === "cancelled" ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-300"}`}>{appointment.status}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         {/* Appointment Details Modal */}
         <AppointmentModal

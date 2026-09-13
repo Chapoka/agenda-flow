@@ -19,7 +19,11 @@ import {
   Send,
   Trash2,
   RefreshCw,
-  MessageSquare
+  MessageSquare,
+  Building2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -72,6 +76,7 @@ export default function Invoices() {
 
   const [detailInvoice, setDetailInvoice] = useState(null);
   const [viewMode, setViewMode] = useState("list");
+  const [sortOrder, setSortOrder] = useState("recent");
   const [sendingInvoice, setSendingInvoice] = useState(null);
   const [deletingInvoice, setDeletingInvoice] = useState(null);
   const [deletingLoading, setDeletingLoading] = useState(false);
@@ -305,6 +310,48 @@ export default function Invoices() {
     return matchesSearch && matchesStatus;
   });
 
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.customer_name || "").localeCompare(b.customer_name || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.customer_name || "").localeCompare(a.customer_name || "", "pt-BR");
+    if (sortOrder === "plano-asc") {
+      const pa = a.plan_name || (customers.find(s => s.id === a.customer_id)?.custom_plan ? "Plano Personalizado" : "-");
+      const pb = b.plan_name || (customers.find(s => s.id === b.customer_id)?.custom_plan ? "Plano Personalizado" : "-");
+      return pa.localeCompare(pb, "pt-BR");
+    }
+    if (sortOrder === "plano-desc") {
+      const pa = a.plan_name || (customers.find(s => s.id === a.customer_id)?.custom_plan ? "Plano Personalizado" : "-");
+      const pb = b.plan_name || (customers.find(s => s.id === b.customer_id)?.custom_plan ? "Plano Personalizado" : "-");
+      return pb.localeCompare(pa, "pt-BR");
+    }
+    if (sortOrder === "empresa-asc") {
+      const getCID = (inv) => {
+        const st = customers.find(s => s.id === inv.customer_id);
+        return inv.company_id || st?.company_id || (st?.company_ids || [])[0] || "";
+      };
+      const ca = companies.find(c => c.id === getCID(a))?.name || "";
+      const cb = companies.find(c => c.id === getCID(b))?.name || "";
+      return ca.localeCompare(cb, "pt-BR");
+    }
+    if (sortOrder === "empresa-desc") {
+      const getCID = (inv) => {
+        const st = customers.find(s => s.id === inv.customer_id);
+        return inv.company_id || st?.company_id || (st?.company_ids || [])[0] || "";
+      };
+      const ca = companies.find(c => c.id === getCID(a))?.name || "";
+      const cb = companies.find(c => c.id === getCID(b))?.name || "";
+      return cb.localeCompare(ca, "pt-BR");
+    }
+    if (sortOrder === "value-desc") return (b.value || 0) - (a.value || 0);
+    if (sortOrder === "value-asc") return (a.value || 0) - (b.value || 0);
+    if (sortOrder === "recent") return new Date(b.created_at || b.due_date || 0) - new Date(a.created_at || a.due_date || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || a.due_date || 0) - new Date(b.created_at || b.due_date || 0);
+    if (sortOrder === "due-asc") return new Date(a.due_date || 0) - new Date(b.due_date || 0);
+    if (sortOrder === "due-desc") return new Date(b.due_date || 0) - new Date(a.due_date || 0);
+    if (sortOrder === "status-asc") return (a.status || "").localeCompare(b.status || "", "pt-BR");
+    if (sortOrder === "status-desc") return (b.status || "").localeCompare(a.status || "", "pt-BR");
+    return 0;
+  });
+
   const toggleSelect = (id) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -314,15 +361,15 @@ export default function Invoices() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === filteredInvoices.length) {
+    if (selectedIds.size === sortedInvoices.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredInvoices.map(i => i.id)));
+      setSelectedIds(new Set(sortedInvoices.map(i => i.id)));
     }
   };
 
   const handleBulkSend = async () => {
-    const toSend = filteredInvoices.filter(i => selectedIds.has(i.id));
+    const toSend = sortedInvoices.filter(i => selectedIds.has(i.id));
     if (toSend.length === 0) return;
     setBulkSending(true);
     let ok = 0;
@@ -416,6 +463,30 @@ export default function Invoices() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-full sm:w-48">
+              <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger className="rounded-xl">
+                  <ArrowUpDown className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Ordenar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Mais recentes ↓</SelectItem>
+                  <SelectItem value="oldest">Mais antigos ↑</SelectItem>
+                  <SelectItem value="name-asc">Cliente A → Z</SelectItem>
+                  <SelectItem value="name-desc">Cliente Z → A</SelectItem>
+                  <SelectItem value="plano-asc">Plano A → Z</SelectItem>
+                  <SelectItem value="plano-desc">Plano Z → A</SelectItem>
+                  <SelectItem value="empresa-asc">Empresa A → Z</SelectItem>
+                  <SelectItem value="empresa-desc">Empresa Z → A</SelectItem>
+                  <SelectItem value="value-desc">Maior valor ↓</SelectItem>
+                  <SelectItem value="value-asc">Menor valor ↑</SelectItem>
+                  <SelectItem value="due-asc">Vencimento ↑</SelectItem>
+                  <SelectItem value="due-desc">Vencimento ↓</SelectItem>
+                  <SelectItem value="status-asc">Status A → Z</SelectItem>
+                  <SelectItem value="status-desc">Status Z → A</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex border border-outline-variant rounded-xl overflow-hidden flex-shrink-0">
               <button onClick={() => setViewMode("list")} className={cn("px-3 py-2 transition-colors", viewMode === "list" ? "bg-branding-primary text-white" : "hover:bg-surface-container-low")}>
                 <List className="w-4 h-4" />
@@ -462,16 +533,16 @@ export default function Invoices() {
                 <TableRow className="bg-background">
                   <TableHead className="w-10">
                     <Checkbox
-                      checked={filteredInvoices.length > 0 && selectedIds.size === filteredInvoices.length}
+                      checked={sortedInvoices.length > 0 && selectedIds.size === sortedInvoices.length}
                       onCheckedChange={toggleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Plano</TableHead>
-                  {isSuperAdmin && <TableHead>Empresa</TableHead>}
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "name-asc" ? "name-desc" : "name-asc")}><span className="inline-flex items-center gap-1">Cliente {sortOrder === "name-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "name-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></TableHead>
+                  <TableHead className="cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "plano-asc" ? "plano-desc" : "plano-asc")}><span className="inline-flex items-center gap-1">Plano {sortOrder === "plano-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "plano-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></TableHead>
+                  {isSuperAdmin && <TableHead className="cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "empresa-asc" ? "empresa-desc" : "empresa-asc")}><span className="inline-flex items-center gap-1">Empresa {sortOrder === "empresa-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "empresa-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></TableHead>}
+                  <TableHead className="cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "value-desc" ? "value-asc" : "value-desc")}><span className="inline-flex items-center gap-1">Valor {sortOrder === "value-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "value-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></TableHead>
+                  <TableHead className="cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "due-asc" ? "due-desc" : "due-asc")}><span className="inline-flex items-center gap-1">Vencimento {sortOrder === "due-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "due-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></TableHead>
+                  <TableHead className="cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "status-asc" ? "status-desc" : "status-asc")}><span className="inline-flex items-center gap-1">Status {sortOrder === "status-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "status-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -480,9 +551,9 @@ export default function Invoices() {
                   Array(5).fill(0).map((_, i) => (
                     <TableRow key={i}><TableCell colSpan={6}><div className="h-12 bg-surface-container-low animate-pulse rounded" /></TableCell></TableRow>
                   ))
-                ) : filteredInvoices.length === 0 ? (
+                ) : sortedInvoices.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center py-12"><CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-3" /><p className="text-muted-foreground">Nenhuma cobrança encontrada</p></TableCell></TableRow>
-                ) : filteredInvoices.map((invoice) => {
+                ) : sortedInvoices.map((invoice) => {
                   const status = statusConfig[invoice.status] || statusConfig.pending;
                   const StatusIcon = status.icon;
                   return (
@@ -551,12 +622,12 @@ export default function Invoices() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {isLoading ? Array(6).fill(0).map((_, i) => <div key={i} className="bg-card rounded-2xl p-5 animate-pulse h-40" />) :
-            filteredInvoices.length === 0 ? (
+            sortedInvoices.length === 0 ? (
               <div className="col-span-full text-center py-12 bg-card rounded-2xl border border-outline-variant/30">
                 <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground">Nenhuma cobrança encontrada</p>
               </div>
-            ) : filteredInvoices.map((invoice) => {
+            ) : sortedInvoices.map((invoice) => {
               const status = statusConfig[invoice.status] || statusConfig.pending;
               const StatusIcon = status.icon;
               const planName = invoice.plan_name || (customers.find(s => s.id === invoice.customer_id)?.custom_plan ? "Plano Personalizado" : "-");
@@ -571,10 +642,17 @@ export default function Invoices() {
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-on-surface text-sm leading-tight truncate">{invoice.customer_name}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
+                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                           <p className="text-xs text-muted-foreground truncate">{planName}</p>
                           {isCustom && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-medium flex-shrink-0">Custom</span>}
                         </div>
+                        {isSuperAdmin && (() => {
+                          const st = customers.find(s => s.id === invoice.customer_id);
+                          const cid = invoice.company_id || st?.company_id || (st?.company_ids || [])[0];
+                          if (!cid) return <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">Global</span>;
+                          const co = companies.find(c => c.id === cid);
+                          return <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30"><Building2 className="w-3 h-3" />{co?.name || cid.slice(0,8)}</span>;
+                        })()}
                         {(() => {
                           const st = customers.find(s => s.id === invoice.customer_id);
                           if (st?.guardian_id) {

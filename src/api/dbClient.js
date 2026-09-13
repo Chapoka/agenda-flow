@@ -315,6 +315,7 @@ const ENTITY_TABLE_MAP = {
   PunchCard: "punch_cards",
   ProfessionalService: "professional_services",
   BlockedTime: "blocked_times",
+  EstablishmentType: "establishment_types",
 };
 
 const CUSTOMER_COLUMN_MAP = {

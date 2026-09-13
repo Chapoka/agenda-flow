@@ -14,6 +14,12 @@ import {
   MoreVertical,
   Edit,
   Trash2,
+  Building2,
+  LayoutGrid,
+  List,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +75,8 @@ export default function PunchCards() {
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("active");
+  const [viewMode, setViewMode] = useState("grid");
+  const [sortOrder, setSortOrder] = useState("recent");
   const [showForm, setShowForm] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [deletingCard, setDeletingCard] = useState(null);
@@ -93,6 +101,13 @@ export default function PunchCards() {
     queryFn: () => db.entities.Service.list(),
     enabled: ready,
   });
+
+  const { data: allCompanies = [] } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => db.entities.Company.list(),
+    enabled: ready && isSuperAdmin,
+  });
+  const getCompanyName = (cid) => allCompanies.find(c => c.id === cid)?.name || "—";
 
   const cards = effectiveCompanyId
     ? allCards.filter(c => c.company_id === effectiveCompanyId)
@@ -209,6 +224,26 @@ export default function PunchCards() {
     return s?.name || "Todos os serviços";
   };
 
+  const sortedCards = [...filteredCards].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.name || "").localeCompare(b.name || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.name || "").localeCompare(a.name || "", "pt-BR");
+    if (sortOrder === "cliente-asc") return (a.customer_name || getCustomerName(a.customer_id) || "").localeCompare(b.customer_name || getCustomerName(b.customer_id) || "", "pt-BR");
+    if (sortOrder === "cliente-desc") return (b.customer_name || getCustomerName(b.customer_id) || "").localeCompare(a.customer_name || getCustomerName(a.customer_id) || "", "pt-BR");
+    if (sortOrder === "empresa-asc") return (a.company_id ? getCompanyName(a.company_id) : "").localeCompare(b.company_id ? getCompanyName(b.company_id) : "", "pt-BR");
+    if (sortOrder === "empresa-desc") return (b.company_id ? getCompanyName(b.company_id) : "").localeCompare(a.company_id ? getCompanyName(a.company_id) : "", "pt-BR");
+    if (sortOrder === "servico-asc") return (a.service_id ? getServiceName(a.service_id) : "Todos").localeCompare(b.service_id ? getServiceName(b.service_id) : "Todos", "pt-BR");
+    if (sortOrder === "servico-desc") return (b.service_id ? getServiceName(b.service_id) : "Todos").localeCompare(a.service_id ? getServiceName(a.service_id) : "Todos", "pt-BR");
+    if (sortOrder === "progresso-asc") return (a.used_services || 0) - (b.used_services || 0);
+    if (sortOrder === "progresso-desc") return (b.used_services || 0) - (a.used_services || 0);
+    if (sortOrder === "expira-asc") return new Date(a.expires_at || "9999-12-31") - new Date(b.expires_at || "9999-12-31");
+    if (sortOrder === "expira-desc") return new Date(b.expires_at || "9999-12-31") - new Date(a.expires_at || "9999-12-31");
+    if (sortOrder === "recent") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    if (sortOrder === "value-desc") return (b.price_paid || 0) - (a.price_paid || 0);
+    if (sortOrder === "value-asc") return (a.price_paid || 0) - (b.price_paid || 0);
+    return 0;
+  });
+
   const totalActive = cards.filter(c => c.active !== false && c.used_services < c.total_services).length;
   const totalRemaining = cards.reduce((sum, c) => {
     if (c.active === false || c.used_services >= c.total_services) return sum;
@@ -281,12 +316,52 @@ export default function PunchCards() {
             <SelectItem value="all">Todos</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={sortOrder} onValueChange={setSortOrder}>
+          <SelectTrigger className="w-44">
+            <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Ordenar" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name-asc">Punch Card A → Z</SelectItem>
+            <SelectItem value="name-desc">Punch Card Z → A</SelectItem>
+            <SelectItem value="cliente-asc">Cliente A → Z</SelectItem>
+            <SelectItem value="cliente-desc">Cliente Z → A</SelectItem>
+            <SelectItem value="empresa-asc">Empresa A → Z</SelectItem>
+            <SelectItem value="empresa-desc">Empresa Z → A</SelectItem>
+            <SelectItem value="servico-asc">Serviço A → Z</SelectItem>
+            <SelectItem value="servico-desc">Serviço Z → A</SelectItem>
+            <SelectItem value="progresso-desc">Progresso ↓</SelectItem>
+            <SelectItem value="progresso-asc">Progresso ↑</SelectItem>
+            <SelectItem value="value-desc">Maior valor ↓</SelectItem>
+            <SelectItem value="value-asc">Menor valor ↑</SelectItem>
+            <SelectItem value="expira-asc">Expira ↑</SelectItem>
+            <SelectItem value="expira-desc">Expira ↓</SelectItem>
+            <SelectItem value="recent">Mais recentes ↓</SelectItem>
+            <SelectItem value="oldest">Mais antigos ↑</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="inline-flex rounded-xl border border-outline-variant bg-card p-1 shadow-sm self-start sm:self-auto">
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "grid" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+            title="Visualização em grade"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode("list")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === "list" ? "bg-branding-primary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+            title="Visualização em lista"
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Cards */}
       {isLoading ? (
         <div className="text-center py-12 text-on-surface-variant">Carregando...</div>
-      ) : filteredCards.length === 0 ? (
+      ) : sortedCards.length === 0 ? (
         <div className="text-center py-12">
           <CreditCard className="w-12 h-12 mx-auto text-on-surface-variant mb-3" />
           <p className="text-on-surface-variant">Nenhum punch card encontrado</p>
@@ -297,9 +372,49 @@ export default function PunchCards() {
             <Plus className="w-4 h-4 mr-2" /> Criar primeiro punch card
           </Button>
         </div>
+      ) : viewMode === "list" ? (
+        <div className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-background border-b border-outline-variant/30">
+                <tr className="text-left text-muted-foreground">
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "name-asc" ? "name-desc" : "name-asc")}><span className="inline-flex items-center gap-1">Punch Card {sortOrder === "name-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "name-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "cliente-asc" ? "cliente-desc" : "cliente-asc")}><span className="inline-flex items-center gap-1">Cliente {sortOrder === "cliente-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "cliente-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  {isSuperAdmin && <th className="px-4 py-3 font-medium hidden lg:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "empresa-asc" ? "empresa-desc" : "empresa-asc")}><span className="inline-flex items-center gap-1">Empresa {sortOrder === "empresa-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "empresa-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>}
+                  <th className="px-4 py-3 font-medium hidden sm:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "servico-asc" ? "servico-desc" : "servico-asc")}><span className="inline-flex items-center gap-1">Serviço {sortOrder === "servico-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "servico-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "progresso-desc" ? "progresso-asc" : "progresso-desc")}><span className="inline-flex items-center gap-1">Progresso {sortOrder === "progresso-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "progresso-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="px-4 py-3 font-medium hidden sm:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "value-desc" ? "value-asc" : "value-desc")}><span className="inline-flex items-center gap-1">Valor {sortOrder === "value-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "value-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "expira-asc" ? "expira-desc" : "expira-asc")}><span className="inline-flex items-center gap-1">Expira {sortOrder === "expira-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "expira-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                  <th className="px-4 py-3 font-medium text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/30">
+                {sortedCards.map(card => {
+                  const remaining = card.total_services - card.used_services;
+                  const progress = card.total_services > 0 ? (card.used_services / card.total_services) * 100 : 0;
+                  const isExpired = card.expires_at && isBefore(parseISO(card.expires_at), now);
+                  const isUsed = remaining <= 0;
+                  const isActive = card.active !== false && !isUsed && !isExpired;
+                  return (
+                    <tr key={card.id} className={`hover:bg-surface-container-low transition-colors ${!isActive ? "opacity-60" : ""}`}>
+                      <td className="px-4 py-3 font-medium text-on-surface">{card.name}</td>
+                      <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{card.customer_name || getCustomerName(card.customer_id)}</td>
+                      {isSuperAdmin && <td className="px-4 py-3 hidden lg:table-cell">{card.company_id ? <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full px-2 py-0.5"><Building2 className="w-3 h-3" />{getCompanyName(card.company_id)}</span> : <span className="text-muted-foreground">—</span>}</td>}
+                      <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{card.service_id ? getServiceName(card.service_id) : "Todos"}</td>
+                      <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-20 h-2 bg-surface-container rounded-full overflow-hidden"><div className={cn("h-full rounded-full", isUsed ? "bg-emerald-500" : isExpired ? "bg-amber-500" : "bg-branding-primary")} style={{ width: `${Math.min(progress, 100)}%` }} /></div><span className="text-xs text-muted-foreground">{card.used_services}/{card.total_services}</span></div></td>
+                      <td className="px-4 py-3 hidden sm:table-cell font-medium">R$ {Number(card.price_paid || 0).toFixed(2).replace(".", ",")}</td>
+                      <td className="px-4 py-3 hidden md:table-cell text-xs">{card.expires_at ? format(parseISO(card.expires_at), "dd/MM/yyyy") : "—"}</td>
+                      <td className="px-4 py-3 text-right"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => openEdit(card)}><Edit className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem><DropdownMenuItem onClick={() => setDeletingCard(card)} className="text-red-400"><Trash2 className="w-4 h-4 mr-2" /> Excluir</DropdownMenuItem></DropdownMenuContent></DropdownMenu></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <div className="space-y-3">
-          {filteredCards.map(card => {
+          {sortedCards.map(card => {
             const remaining = card.total_services - card.used_services;
             const progress = card.total_services > 0 ? (card.used_services / card.total_services) * 100 : 0;
             const isExpired = card.expires_at && isBefore(parseISO(card.expires_at), now);
@@ -328,7 +443,10 @@ export default function PunchCards() {
                        <CreditCard className="w-5 h-5" />}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-on-surface text-sm">{card.name}</h3>
+                      <h3 className="font-semibold text-on-surface text-sm flex items-center gap-1.5 flex-wrap">
+                        {card.name}
+                        {isSuperAdmin && card.company_id && <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full px-2 py-0.5"><Building2 className="w-3 h-3" />{getCompanyName(card.company_id)}</span>}
+                      </h3>
                       <p className="text-xs text-on-surface-variant">
                         {card.customer_name || getCustomerName(card.customer_id)}
                         {card.service_id && ` • ${getServiceName(card.service_id)}`}

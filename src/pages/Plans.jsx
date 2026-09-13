@@ -16,6 +16,9 @@ import {
   Scissors,
   User,
   FileText,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +98,7 @@ export default function Plans() {
   const [editingPlan, setEditingPlan] = useState(null);
   const [deletingPlan, setDeletingPlan] = useState(null);
   const [filterCompany, setFilterCompany] = useState("all");
+  const [sortOrder, setSortOrder] = useState("name-asc");
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [planItems, setPlanItems] = useState([]);
 
@@ -324,6 +328,28 @@ export default function Plans() {
 
   const getCompanyName = (cid) => companies.find(c => c.id === cid)?.name || "—";
 
+  const sortedPlans = [...visiblePlans].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.name || "").localeCompare(b.name || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.name || "").localeCompare(a.name || "", "pt-BR");
+    if (sortOrder === "tipo-asc") return (a.modality || "").localeCompare(b.modality || "", "pt-BR");
+    if (sortOrder === "tipo-desc") return (b.modality || "").localeCompare(a.modality || "", "pt-BR");
+    if (sortOrder === "empresa-asc") return (a.company_id ? getCompanyName(a.company_id) : "Global").localeCompare(b.company_id ? getCompanyName(b.company_id) : "Global", "pt-BR");
+    if (sortOrder === "empresa-desc") return (b.company_id ? getCompanyName(b.company_id) : "Global").localeCompare(a.company_id ? getCompanyName(a.company_id) : "Global", "pt-BR");
+    if (sortOrder === "profissional-asc") return (a.professional || "").localeCompare(b.professional || "", "pt-BR");
+    if (sortOrder === "profissional-desc") return (b.professional || "").localeCompare(a.professional || "", "pt-BR");
+    if (sortOrder === "visitas-asc") return (a.session_count || 0) - (b.session_count || 0);
+    if (sortOrder === "visitas-desc") return (b.session_count || 0) - (a.session_count || 0);
+    if (sortOrder === "price-desc") return (b.price || 0) - (a.price || 0);
+    if (sortOrder === "price-asc") return (a.price || 0) - (b.price || 0);
+    if (sortOrder === "total-asc") return ((a.price || 0)*(a.session_count||0)-(a.discount||0)) - ((b.price || 0)*(b.session_count||0)-(b.discount||0));
+    if (sortOrder === "total-desc") return ((b.price || 0)*(b.session_count||0)-(b.discount||0)) - ((a.price || 0)*(a.session_count||0)-(a.discount||0));
+    if (sortOrder === "ativo-asc") return (a.active !== false ? 1 : 0) - (b.active !== false ? 1 : 0);
+    if (sortOrder === "ativo-desc") return (b.active !== false ? 1 : 0) - (a.active !== false ? 1 : 0);
+    if (sortOrder === "recent") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    return 0;
+  });
+
   const planCompanyLabel = (plan) => {
     if (!plan.company_id) return { label: "Global (Admin)", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" };
     return { label: getCompanyName(plan.company_id), color: "bg-amber-500/20 text-amber-300 border-amber-500/30" };
@@ -360,6 +386,33 @@ export default function Plans() {
                 </SelectContent>
               </Select>
             )}
+
+            <Select value={sortOrder} onValueChange={setSortOrder}>
+              <SelectTrigger className="rounded-xl w-44 bg-card">
+                <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Ordenar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Nome A → Z</SelectItem>
+                <SelectItem value="name-desc">Nome Z → A</SelectItem>
+                <SelectItem value="tipo-asc">Tipo A → Z</SelectItem>
+                <SelectItem value="tipo-desc">Tipo Z → A</SelectItem>
+                <SelectItem value="empresa-asc">Empresa A → Z</SelectItem>
+                <SelectItem value="empresa-desc">Empresa Z → A</SelectItem>
+                <SelectItem value="profissional-asc">Profissional A → Z</SelectItem>
+                <SelectItem value="profissional-desc">Profissional Z → A</SelectItem>
+                <SelectItem value="visitas-asc">Visitas ↑</SelectItem>
+                <SelectItem value="visitas-desc">Visitas ↓</SelectItem>
+                <SelectItem value="price-asc">Preço ↑</SelectItem>
+                <SelectItem value="price-desc">Preço ↓</SelectItem>
+                <SelectItem value="total-asc">Total ↑</SelectItem>
+                <SelectItem value="total-desc">Total ↓</SelectItem>
+                <SelectItem value="ativo-asc">Inativo → Ativo</SelectItem>
+                <SelectItem value="ativo-desc">Ativo → Inativo</SelectItem>
+                <SelectItem value="recent">Mais recentes ↓</SelectItem>
+                <SelectItem value="oldest">Mais antigos ↑</SelectItem>
+              </SelectContent>
+            </Select>
 
             <div className="flex border border-outline-variant rounded-xl overflow-hidden">
               <button onClick={() => setViewMode("grid")} className={cn("px-3 py-2 transition-colors", viewMode === "grid" ? "bg-branding-primary text-white" : "hover:bg-surface-container-low")}>
@@ -473,7 +526,7 @@ export default function Plans() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map(i => <div key={i} className="bg-card rounded-2xl p-6 animate-pulse h-48" />)}
             </div>
-          ) : visiblePlans.length === 0 ? (
+          ) : sortedPlans.length === 0 ? (
             <div className="bg-card rounded-2xl shadow-sm border border-outline-variant/30 p-12 text-center">
               <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-on-surface mb-2">Nenhum plano encontrado</h3>
@@ -491,19 +544,19 @@ export default function Plans() {
               <table className="w-full text-sm min-w-[520px]">
                 <thead className="bg-background border-b border-outline-variant/30">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant">Nome</th>
-                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden sm:table-cell">Tipo</th>
-                    {isAdmin && <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden md:table-cell">Empresa</th>}
-                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden lg:table-cell">Profissional</th>
-                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant">Visitas</th>
-                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant">Preço/visita</th>
-                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant">Total</th>
-                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant">Ativo</th>
+                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "name-asc" ? "name-desc" : "name-asc")}><span className="inline-flex items-center gap-1">Nome {sortOrder === "name-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "name-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden sm:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "tipo-asc" ? "tipo-desc" : "tipo-asc")}><span className="inline-flex items-center gap-1">Tipo {sortOrder === "tipo-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "tipo-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    {isAdmin && <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden md:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "empresa-asc" ? "empresa-desc" : "empresa-asc")}><span className="inline-flex items-center gap-1">Empresa {sortOrder === "empresa-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "empresa-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>}
+                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant hidden lg:table-cell cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "profissional-asc" ? "profissional-desc" : "profissional-asc")}><span className="inline-flex items-center gap-1">Profissional {sortOrder === "profissional-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "profissional-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "visitas-asc" ? "visitas-desc" : "visitas-asc")}><span className="inline-flex items-center gap-1">Visitas {sortOrder === "visitas-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "visitas-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant cursor-pointer hover:text-on-surface select-none hidden sm:table-cell" onClick={() => setSortOrder(prev => prev === "price-desc" ? "price-asc" : "price-desc")}><span className="inline-flex items-center gap-1">Preço/visita {sortOrder === "price-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : sortOrder === "price-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "total-asc" ? "total-desc" : "total-asc")}><span className="inline-flex items-center gap-1">Total {sortOrder === "total-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "total-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
+                    <th className="text-left px-4 py-3 font-medium text-on-surface-variant cursor-pointer hover:text-on-surface select-none" onClick={() => setSortOrder(prev => prev === "ativo-asc" ? "ativo-desc" : "ativo-asc")}><span className="inline-flex items-center gap-1">Ativo {sortOrder === "ativo-asc" ? <ArrowUp className="w-3.5 h-3.5" /> : sortOrder === "ativo-desc" ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}</span></th>
                     {canManage && <th className="text-right px-4 py-3 font-medium text-on-surface-variant">Ações</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/30">
-                  {visiblePlans.map(plan => {
+                  {sortedPlans.map(plan => {
                     const { label, color } = planCompanyLabel(plan);
                     const linkedServices = planServices
                       .filter(ps => ps.plan_id === plan.id)
@@ -553,7 +606,7 @@ export default function Plans() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {visiblePlans.map(plan => {
+              {sortedPlans.map(plan => {
                 const customersWithPlan = customers.filter(s => s.plan_id === plan.id);
                 const { label, color } = planCompanyLabel(plan);
                 return (

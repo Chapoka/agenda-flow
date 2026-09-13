@@ -28,6 +28,12 @@ export default function NewAppointmentModal({ open, onClose, customers, plans = 
   const [extraCustomerIds, setExtraCustomerIds] = useState([]);
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerOpen, setCustomerOpen] = useState(false);
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [serviceOpen, setServiceOpen] = useState(false);
+  const [professionalSearch, setProfessionalSearch] = useState("");
+  const [professionalOpen, setProfessionalOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [productOpen, setProductOpen] = useState(false);
   const [formData, setFormData] = useState({
     customer_id: "",
     service_id: "",
@@ -70,6 +76,24 @@ export default function NewAppointmentModal({ open, onClose, customers, plans = 
     const role = rawRole === "teacher" ? "profissional" : rawRole;
     return p.active !== false && (role === "profissional" || p.is_professional === true);
   }), [professionals]);
+
+  const filteredServicesForSearch = useMemo(() => {
+    if (!serviceSearch.trim()) return activeServices;
+    const s = serviceSearch.toLowerCase();
+    return activeServices.filter(svc => svc.name?.toLowerCase().includes(s) || String(svc.price || "").includes(s) || svc.category?.toLowerCase().includes(s));
+  }, [activeServices, serviceSearch]);
+
+  const filteredProfessionalsForSearch = useMemo(() => {
+    if (!professionalSearch.trim()) return activeProfessionals;
+    const s = professionalSearch.toLowerCase();
+    return activeProfessionals.filter(p => (p.full_name || p.email || "").toLowerCase().includes(s) || (p.phone || "").toLowerCase().includes(s));
+  }, [activeProfessionals, professionalSearch]);
+
+  const filteredProductsForSearch = useMemo(() => {
+    if (!productSearch.trim()) return activeProducts;
+    const s = productSearch.toLowerCase();
+    return activeProducts.filter(p => p.name?.toLowerCase().includes(s) || String(p.price || "").includes(s));
+  }, [activeProducts, productSearch]);
 
   const filteredCustomersForSearch = useMemo(() => {
     if (!customerSearch) return customers;
@@ -261,6 +285,14 @@ export default function NewAppointmentModal({ open, onClose, customers, plans = 
     setAppointmentType("normal");
     setExtraCustomerIds([]);
     setFormData({ customer_id: "", service_id: "", professional_id: "", product_id: "", date: "", start_time: selectedTime || "08:00", duration_mins: 60, original_appointment_id: "" });
+    setCustomerSearch("");
+    setCustomerOpen(false);
+    setServiceSearch("");
+    setServiceOpen(false);
+    setProfessionalSearch("");
+    setProfessionalOpen(false);
+    setProductSearch("");
+    setProductOpen(false);
     onClose();
   };
 
@@ -502,79 +534,197 @@ export default function NewAppointmentModal({ open, onClose, customers, plans = 
             </div>
           )}
 
-          {/* Serviço */}
+          {/* Serviço - pesquisável */}
           <div className="space-y-2">
             <Label className="text-sm font-medium text-on-surface">Serviço</Label>
-            <Select value={formData.service_id} onValueChange={handleServiceChange}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder="Selecione o serviço" />
-              </SelectTrigger>
-              <SelectContent>
-                {activeServices.length === 0 ? (
-                  <SelectItem value="none" disabled>Nenhum serviço disponível</SelectItem>
-                ) : (
-                  activeServices.map(svc => (
-                    <SelectItem key={svc.id} value={svc.id}>
-                      <div className="flex items-center gap-2">
-                        <Scissors className="w-4 h-4 text-muted-foreground" />
-                        {svc.name}
-                        <span className="text-outline text-xs">R$ {Number(svc.price || 0).toFixed(2)}</span>
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <Popover open={serviceOpen} onOpenChange={setServiceOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={serviceOpen}
+                  className={cn("w-full justify-between rounded-xl text-left font-normal h-10", !formData.service_id && "text-muted-foreground")}
+                >
+                  <span className="truncate">
+                    {formData.service_id ? (activeServices.find(s => s.id === formData.service_id)?.name || "Selecione o serviço") : "Selecione o serviço"}
+                  </span>
+                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput placeholder="Buscar por serviço, categoria ou preço..." value={serviceSearch} onValueChange={setServiceSearch} className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>Nenhum serviço encontrado.</CommandEmpty>
+                    <CommandGroup className="max-h-60 overflow-y-auto">
+                      {filteredServicesForSearch.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">Nenhum serviço disponível</p>
+                      ) : (
+                        filteredServicesForSearch.map((svc) => (
+                          <CommandItem
+                            key={svc.id}
+                            value={`${svc.name} ${svc.category || ""} ${svc.price || ""}`}
+                            onSelect={() => {
+                              handleServiceChange(svc.id);
+                              setServiceOpen(false);
+                              setServiceSearch("");
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", formData.service_id === svc.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate flex items-center gap-1.5"><Scissors className="w-3.5 h-3.5 text-muted-foreground" />{svc.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{svc.category || "Sem categoria"} • R$ {Number(svc.price || 0).toFixed(2)}</p>
+                            </div>
+                          </CommandItem>
+                        ))
+                      )}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {formData.service_id && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-muted-foreground"
+                onClick={() => handleServiceChange("")}
+              >
+                Limpar seleção
+              </Button>
+            )}
           </div>
 
-          {/* Profissional */}
+          {/* Profissional - pesquisável */}
           <div className="space-y-2">
             <Label className="text-sm font-medium text-on-surface">Profissional</Label>
-            <Select value={formData.professional_id} onValueChange={(v) => handleChange("professional_id", v)}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder="Selecione o profissional" />
-              </SelectTrigger>
-              <SelectContent>
-                {activeProfessionals.length === 0 ? (
-                  <SelectItem value="none" disabled>Nenhum profissional disponível</SelectItem>
-                ) : (
-                  activeProfessionals.map(pro => (
-                    <SelectItem key={pro.id} value={pro.id}>
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        {pro.full_name || pro.email}
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <Popover open={professionalOpen} onOpenChange={setProfessionalOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={professionalOpen}
+                  className={cn("w-full justify-between rounded-xl text-left font-normal h-10", !formData.professional_id && "text-muted-foreground")}
+                >
+                  <span className="truncate">
+                    {formData.professional_id ? (activeProfessionals.find(p => p.id === formData.professional_id)?.full_name || activeProfessionals.find(p => p.id === formData.professional_id)?.email || "Selecione o profissional") : "Selecione o profissional"}
+                  </span>
+                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput placeholder="Buscar por profissional, e-mail ou telefone..." value={professionalSearch} onValueChange={setProfessionalSearch} className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>Nenhum profissional encontrado.</CommandEmpty>
+                    <CommandGroup className="max-h-60 overflow-y-auto">
+                      {filteredProfessionalsForSearch.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">Nenhum profissional disponível</p>
+                      ) : (
+                        filteredProfessionalsForSearch.map((pro) => (
+                          <CommandItem
+                            key={pro.id}
+                            value={`${pro.full_name || ""} ${pro.email || ""} ${pro.phone || ""}`}
+                            onSelect={() => {
+                              handleChange("professional_id", pro.id);
+                              setProfessionalOpen(false);
+                              setProfessionalSearch("");
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", formData.professional_id === pro.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-muted-foreground" />{pro.full_name || pro.email}</p>
+                              <p className="text-xs text-muted-foreground truncate">{pro.email || ""} {pro.phone ? `• ${pro.phone}` : ""}</p>
+                            </div>
+                          </CommandItem>
+                        ))
+                      )}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {formData.professional_id && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-muted-foreground"
+                onClick={() => handleChange("professional_id", "")}
+              >
+                Limpar seleção
+              </Button>
+            )}
           </div>
 
-          {/* Produto */}
+          {/* Produto - pesquisável — opcional */}
           <div className="space-y-2">
             <Label className="text-sm font-medium text-on-surface flex items-center gap-1.5">
               <Package className="w-4 h-4 text-muted-foreground" />
               Produto
               <span className="text-muted-foreground font-normal">— opcional</span>
             </Label>
-            <Select value={formData.product_id} onValueChange={(v) => handleChange("product_id", v)}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder="Selecione o produto" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nenhum produto</SelectItem>
-                {activeProducts.map(prod => (
-                  <SelectItem key={prod.id} value={prod.id}>
-                    <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4 text-muted-foreground" />
-                      {prod.name}
-                      <span className="text-outline text-xs">R$ {Number(prod.price || 0).toFixed(2)}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={productOpen} onOpenChange={setProductOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={productOpen}
+                  className={cn("w-full justify-between rounded-xl text-left font-normal h-10", !formData.product_id && "text-muted-foreground")}
+                >
+                  <span className="truncate">
+                    {formData.product_id ? (activeProducts.find(p => p.id === formData.product_id)?.name || "Selecione o produto") : "Selecione o produto"}
+                  </span>
+                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput placeholder="Buscar por produto, preço..." value={productSearch} onValueChange={setProductSearch} className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                    <CommandGroup className="max-h-60 overflow-y-auto">
+                      <CommandItem
+                        value="none"
+                        onSelect={() => {
+                          handleChange("product_id", "");
+                          setProductOpen(false);
+                          setProductSearch("");
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", !formData.product_id ? "opacity-100" : "opacity-0")} />
+                        <span>Nenhum produto</span>
+                      </CommandItem>
+                      {filteredProductsForSearch.map((prod) => (
+                        <CommandItem
+                          key={prod.id}
+                          value={`${prod.name} ${prod.price || ""}`}
+                          onSelect={() => {
+                            handleChange("product_id", prod.id);
+                            setProductOpen(false);
+                            setProductSearch("");
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", formData.product_id === prod.id ? "opacity-100" : "opacity-0")} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate flex items-center gap-1.5"><Package className="w-3.5 h-3.5 text-muted-foreground" />{prod.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">R$ {Number(prod.price || 0).toFixed(2)}</p>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Data & Hora */}

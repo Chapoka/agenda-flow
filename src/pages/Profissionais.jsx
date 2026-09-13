@@ -22,6 +22,9 @@ import {
   PowerOff,
   LayoutGrid,
   List,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +89,7 @@ export default function Profissionais() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("list");
   const [companyFilter, setCompanyFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("name-asc");
   const [showForm, setShowForm] = useState(false);
   const [selectedProf, setSelectedProf] = useState(null);
   const [editingProf, setEditingProf] = useState(null);
@@ -163,6 +167,30 @@ export default function Profissionais() {
     const matchSearch = !search || u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || (statusFilter === "active" && u.active !== false) || (statusFilter === "inactive" && u.active === false);
     return isProf && matchCompany && matchSearch && matchStatus;
+  });
+
+  const sortedProfessionals = [...professionals].sort((a, b) => {
+    if (sortOrder === "name-asc") return (a.full_name || a.email || "").localeCompare(b.full_name || b.email || "", "pt-BR");
+    if (sortOrder === "name-desc") return (b.full_name || b.email || "").localeCompare(a.full_name || a.email || "", "pt-BR");
+    if (sortOrder === "empresa-asc") {
+      const aIds = userCompanyMap[a.id] || (a.company_ids || (a.company_id ? [a.company_id] : []));
+      const bIds = userCompanyMap[b.id] || (b.company_ids || (b.company_id ? [b.company_id] : []));
+      const aName = aIds.map(id => allCompanies.find(c => c.id === id)?.name).filter(Boolean).join(", ") || "";
+      const bName = bIds.map(id => allCompanies.find(c => c.id === id)?.name).filter(Boolean).join(", ") || "";
+      return aName.localeCompare(bName, "pt-BR");
+    }
+    if (sortOrder === "empresa-desc") {
+      const aIds = userCompanyMap[a.id] || (a.company_ids || (a.company_id ? [a.company_id] : []));
+      const bIds = userCompanyMap[b.id] || (b.company_ids || (b.company_id ? [b.company_id] : []));
+      const aName = aIds.map(id => allCompanies.find(c => c.id === id)?.name).filter(Boolean).join(", ") || "";
+      const bName = bIds.map(id => allCompanies.find(c => c.id === id)?.name).filter(Boolean).join(", ") || "";
+      return bName.localeCompare(aName, "pt-BR");
+    }
+    if (sortOrder === "status-asc") return (a.active !== false ? 1 : 0) - (b.active !== false ? 1 : 0);
+    if (sortOrder === "status-desc") return (b.active !== false ? 1 : 0) - (a.active !== false ? 1 : 0);
+    if (sortOrder === "recent") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (sortOrder === "oldest") return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    return 0;
   });
 
   const services = effectiveCompanyId
@@ -448,6 +476,23 @@ export default function Profissionais() {
             </Select>
           )}
 
+          <Select value={sortOrder} onValueChange={setSortOrder}>
+            <SelectTrigger className="w-44 rounded-lg h-9">
+              <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name-asc">Nome A → Z</SelectItem>
+              <SelectItem value="name-desc">Nome Z → A</SelectItem>
+              <SelectItem value="empresa-asc">Empresa A → Z</SelectItem>
+              <SelectItem value="empresa-desc">Empresa Z → A</SelectItem>
+              <SelectItem value="status-asc">Inativo → Ativo</SelectItem>
+              <SelectItem value="status-desc">Ativo → Inativo</SelectItem>
+              <SelectItem value="recent">Mais recentes ↓</SelectItem>
+              <SelectItem value="oldest">Mais antigos ↑</SelectItem>
+            </SelectContent>
+          </Select>
+
           <div className="ml-auto flex bg-surface-container-low rounded-lg p-1 gap-1">
             <button
               onClick={() => setViewMode("list")}
@@ -476,14 +521,14 @@ export default function Profissionais() {
 
         {loadingUsers ? (
           <div className="text-center py-12 text-muted-foreground">Carregando...</div>
-        ) : professionals.length === 0 ? (
+        ) : sortedProfessionals.length === 0 ? (
           <div className="text-center py-12">
             <UserCog className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Nenhum profissional encontrado</p>
           </div>
         ) : effectiveViewMode === "list" ? (
           <div className="space-y-3">
-            {professionals.map(prof => {
+            {sortedProfessionals.map(prof => {
               const svcCount = proServByType(prof.id, "services").length;
               const prodCount = proServByType(prof.id, "products").length;
               return (
@@ -562,7 +607,7 @@ export default function Profissionais() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {professionals.map(prof => {
+            {sortedProfessionals.map(prof => {
               const svcCount = proServByType(prof.id, "services").length;
               return (
                 <div key={prof.id} onClick={() => { setSelectedProf(prof); setActiveTab("services"); }}

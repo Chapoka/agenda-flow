@@ -21,10 +21,12 @@ import {
   UserCog,
   Phone,
   User,
+  LayoutGrid,
+  Search,
 } from "lucide-react";
 import { formatPhone, formatCPF, formatRG } from "@/utils/formatters";
 import CompanyIntegrationCard from "@/components/settings/CompanyIntegrationCard";
-import ModalitiesSection from "@/components/settings/ModalitiesSection";
+import EstablishmentTypesSection from "@/components/settings/EstablishmentTypesSection";
 import AsaasSubaccountsModal from "@/components/settings/AsaasSubaccountsModal";
 import CompanyMultiSelect from "@/components/settings/CompanyMultiSelect";
 import LoginImagesCard from "@/components/settings/LoginImagesCard";
@@ -85,6 +87,12 @@ export default function Settings() {
 
   const [currentUser, setCurrentUser] = useState(null);
   const [subaccountsCompany, setSubaccountsCompany] = useState(null);
+  const [userViewMode, setUserViewMode] = useState("list");
+  const [companySearch, setCompanySearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [companyPage, setCompanyPage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
+  const PAGE_SIZE = 5;
 
   useEffect(() => {
     localStorage.setItem("form_draft_user_open", String(showUserModal));
@@ -194,6 +202,28 @@ export default function Settings() {
           return (uRole === "super_admin" || uRole === "admin") && currentUserCompanyIds.some(cid => uIds.includes(cid));
         })
       : [];
+
+  const filteredCompanies = companies.filter(c => {
+    if (!companySearch.trim()) return true;
+    const q = companySearch.toLowerCase();
+    return c.name?.toLowerCase().includes(q) || c.cidade?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q) || c.cnpj?.includes(q);
+  });
+  const filteredUsers = visibleUsers.filter(u => {
+    if (!userSearch.trim()) return true;
+    const q = userSearch.toLowerCase();
+    return u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.role?.toLowerCase().includes(q);
+  });
+
+  // Paginação - 5 por página + scroll
+  const companyTotalPages = Math.ceil(filteredCompanies.length / PAGE_SIZE) || 1;
+  const userTotalPages = Math.ceil(filteredUsers.length / PAGE_SIZE) || 1;
+  const paginatedCompanies = filteredCompanies.slice((companyPage - 1) * PAGE_SIZE, companyPage * PAGE_SIZE);
+  const paginatedUsers = filteredUsers.slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE);
+
+  useEffect(() => { setCompanyPage(1); }, [companySearch]);
+  useEffect(() => { setUserPage(1); }, [userSearch]);
+  useEffect(() => { if (companyPage > companyTotalPages) setCompanyPage(companyTotalPages); }, [companyTotalPages, companyPage]);
+  useEffect(() => { if (userPage > userTotalPages) setUserPage(userTotalPages); }, [userTotalPages, userPage]);
 
   useEffect(() => {
     if (settings.length > 0) {
@@ -785,20 +815,50 @@ export default function Settings() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {companies.map(company => (
-                  <div key={company.id}>
-                    <CompanyIntegrationCard company={company} />
-                    <div className="mt-1 flex justify-end">
-                      <button
-                        onClick={() => setSubaccountsCompany(company)}
-                        className="text-xs text-branding-primary hover:underline flex items-center gap-1 px-2 py-1"
-                      >
-                        <List className="w-3 h-3" /> Gerenciar Subcontas Asaas
-                      </button>
+              <CardContent>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar empresa por nome, cidade ou CNPJ..."
+                    value={companySearch}
+                    onChange={(e) => setCompanySearch(e.target.value)}
+                    className="pl-9 rounded-xl"
+                  />
+                </div>
+                <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2 custom-scrollbar">
+                  {paginatedCompanies.map(company => (
+                    <div key={company.id}>
+                      <CompanyIntegrationCard company={company} />
+                      <div className="mt-1 flex justify-end">
+                        <button
+                          onClick={() => setSubaccountsCompany(company)}
+                          className="text-xs text-branding-primary hover:underline flex items-center gap-1 px-2 py-1"
+                        >
+                          <List className="w-3 h-3" /> Gerenciar Subcontas Asaas
+                        </button>
+                      </div>
                     </div>
+                  ))}
+                  {filteredCompanies.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">Nenhuma empresa encontrada</p>
+                  )}
+                </div>
+                {companyTotalPages > 1 && (
+                  <div className="flex items-center justify-center gap-1 mt-3">
+                    <Button variant="outline" size="sm" disabled={companyPage === 1} onClick={() => setCompanyPage(p => Math.max(1, p - 1))} className="h-8 px-3 rounded-lg">Anterior</Button>
+                    {Array.from({ length: companyTotalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCompanyPage(page)}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${companyPage === page ? "bg-branding-primary text-white" : "bg-card border border-outline-variant hover:bg-surface-container-low"}`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <Button variant="outline" size="sm" disabled={companyPage === companyTotalPages} onClick={() => setCompanyPage(p => Math.min(companyTotalPages, p + 1))} className="h-8 px-3 rounded-lg">Próxima</Button>
                   </div>
-                ))}
+                )}
+                <p className="text-xs text-muted-foreground mt-2 text-right">{filteredCompanies.length} de {companies.length} empresa(s) • Página {companyPage} de {companyTotalPages} • limite 5 por página</p>
               </CardContent>
             </Card>
           )}
@@ -847,101 +907,235 @@ export default function Settings() {
                     <CardDescription>Gerencie os usuários que têm acesso ao sistema</CardDescription>
                   </div>
                 </div>
-                <Button
-                  onClick={() => handleOpenUserModal()}
-                  className="bg-branding-secondary hover:bg-branding-secondary/90 rounded-xl w-full sm:w-auto"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Novo Usuário
-                </Button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="inline-flex rounded-xl border border-outline-variant bg-card p-1 shadow-sm">
+                    <button
+                      onClick={() => setUserViewMode("list")}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${userViewMode === "list" ? "bg-branding-secondary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                      title="Visualização em lista"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setUserViewMode("grid")}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${userViewMode === "grid" ? "bg-branding-secondary text-white" : "text-muted-foreground hover:text-on-surface"}`}
+                      title="Visualização em grade"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <Button
+                    onClick={() => handleOpenUserModal()}
+                    className="bg-branding-secondary hover:bg-branding-secondary/90 rounded-xl flex-1 sm:flex-none"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Usuário
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {visibleUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl hover:bg-surface-container transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-branding-primary to-branding-secondary flex items-center justify-center text-white font-semibold">
-                        {user.full_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium text-on-surface flex items-center gap-1.5">
-                          {user.full_name || "Sem nome"}
-                          {user.is_master && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/20 text-tertiary text-xs font-semibold">
-                              <Crown className="w-3 h-3" />
-                              Master
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                        {(() => {
-                          const cIds = user.company_ids?.length ? user.company_ids : (user.company_id ? [user.company_id] : []);
-                          if (cIds.length === 0) return null;
-                          return (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
-                              🏢 {cIds.map(id => getCompanyName(id)).filter(Boolean).join(", ") || cIds[0]}
-                            </p>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-<span className={`px-2 py-1 text-xs rounded-full ${
-                        user.role === "super_admin" ? "bg-secondary/20 text-secondary" :
-                        user.role === "admin" ? "bg-tertiary/20 text-tertiary" :
-                        user.role === "profissional" ? "bg-primary/20 text-primary" :
-                        "bg-surface-container-high text-on-surface-variant"
-                       }`}>
-                        {user.role === "super_admin" ? "Super Admin" : user.role === "admin" ? "Administrador" : user.role === "profissional" ? "Profissional" : "Cliente"}
-                       </span>
-                      {customerEmailSet.has(user.email) && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">
-                          <User className="w-3 h-3" />
-                          Também cliente
-                        </span>
-                      )}
-                      <Switch
-                        checked={user.active !== false}
-                        onCheckedChange={(checked) =>
-                          toggleUserActiveMutation.mutate({ id: user.id, active: checked })
-                        }
-                        title={user.active !== false ? "Ativo" : "Inativo"}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenUserModal(user)}
-                        className="text-on-surface-variant hover:text-branding-primary"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteUser(user.id)}
-                        disabled={user.is_master && !isSuperAdmin}
-                        className={user.is_master && !isSuperAdmin ? "text-outline cursor-not-allowed" : "text-on-surface-variant hover:text-red-400"}
-                        title={user.is_master && !isSuperAdmin ? "Somente Super Admin pode excluir o Master" : "Excluir"}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {visibleUsers.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">Nenhum usuário cadastrado</p>
-                )}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar usuário por nome, e-mail ou perfil..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="pl-9 rounded-xl"
+                />
               </div>
+              <div className="max-h-[520px] overflow-y-auto pr-2 custom-scrollbar">
+              {userViewMode === "grid" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {paginatedUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex flex-col p-4 bg-surface-container-low rounded-xl hover:bg-surface-container transition-colors gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-branding-primary to-branding-secondary flex items-center justify-center text-white font-semibold flex-shrink-0">
+                          {user.full_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-on-surface flex items-center gap-1.5 truncate">
+                            <span className="truncate">{user.full_name || "Sem nome"}</span>
+                            {user.is_master && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-tertiary/20 text-tertiary text-xs font-semibold flex-shrink-0">
+                                <Crown className="w-3 h-3" />
+                                Master
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          user.role === "super_admin" ? "bg-secondary/20 text-secondary" :
+                          user.role === "admin" ? "bg-tertiary/20 text-tertiary" :
+                          user.role === "profissional" ? "bg-primary/20 text-primary" :
+                          "bg-surface-container-high text-on-surface-variant"
+                        }`}>
+                          {user.role === "super_admin" ? "Super Admin" : user.role === "admin" ? "Administrador" : user.role === "profissional" ? "Profissional" : "Cliente"}
+                        </span>
+                        {customerEmailSet.has(user.email) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">
+                            <User className="w-3 h-3" />
+                            Também cliente
+                          </span>
+                        )}
+                      </div>
+                      {(() => {
+                        const cIds = user.company_ids?.length ? user.company_ids : (user.company_id ? [user.company_id] : []);
+                        if (cIds.length === 0) return null;
+                        return (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            🏢 {cIds.map(id => getCompanyName(id)).filter(Boolean).join(", ") || cIds[0]}
+                          </p>
+                        );
+                      })()}
+                      <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={user.active !== false}
+                            onCheckedChange={(checked) =>
+                              toggleUserActiveMutation.mutate({ id: user.id, active: checked })
+                            }
+                            title={user.active !== false ? "Ativo" : "Inativo"}
+                          />
+                          <span className="text-xs text-muted-foreground">{user.active !== false ? "Ativo" : "Inativo"}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenUserModal(user)}
+                            className="text-on-surface-variant hover:text-branding-primary h-8 w-8"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteUser(user.id)}
+                            disabled={user.is_master && !isSuperAdmin}
+                            className={user.is_master && !isSuperAdmin ? "text-outline cursor-not-allowed h-8 w-8" : "text-on-surface-variant hover:text-red-400 h-8 w-8"}
+                            title={user.is_master && !isSuperAdmin ? "Somente Super Admin pode excluir o Master" : "Excluir"}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredUsers.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8 col-span-full">Nenhum usuário cadastrado</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {paginatedUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl hover:bg-surface-container transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-branding-primary to-branding-secondary flex items-center justify-center text-white font-semibold">
+                          {user.full_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium text-on-surface flex items-center gap-1.5">
+                            {user.full_name || "Sem nome"}
+                            {user.is_master && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/20 text-tertiary text-xs font-semibold">
+                                <Crown className="w-3 h-3" />
+                                Master
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                          {(() => {
+                            const cIds = user.company_ids?.length ? user.company_ids : (user.company_id ? [user.company_id] : []);
+                            if (cIds.length === 0) return null;
+                            return (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                                🏢 {cIds.map(id => getCompanyName(id)).filter(Boolean).join(", ") || cIds[0]}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+ <span className={`px-2 py-1 text-xs rounded-full ${
+                          user.role === "super_admin" ? "bg-secondary/20 text-secondary" :
+                          user.role === "admin" ? "bg-tertiary/20 text-tertiary" :
+                          user.role === "profissional" ? "bg-primary/20 text-primary" :
+                          "bg-surface-container-high text-on-surface-variant"
+                         }`}>
+                          {user.role === "super_admin" ? "Super Admin" : user.role === "admin" ? "Administrador" : user.role === "profissional" ? "Profissional" : "Cliente"}
+                         </span>
+                        {customerEmailSet.has(user.email) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">
+                            <User className="w-3 h-3" />
+                            Também cliente
+                          </span>
+                        )}
+                        <Switch
+                          checked={user.active !== false}
+                          onCheckedChange={(checked) =>
+                            toggleUserActiveMutation.mutate({ id: user.id, active: checked })
+                          }
+                          title={user.active !== false ? "Ativo" : "Inativo"}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenUserModal(user)}
+                          className="text-on-surface-variant hover:text-branding-primary"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteUser(user.id)}
+                          disabled={user.is_master && !isSuperAdmin}
+                          className={user.is_master && !isSuperAdmin ? "text-outline cursor-not-allowed" : "text-on-surface-variant hover:text-red-400"}
+                          title={user.is_master && !isSuperAdmin ? "Somente Super Admin pode excluir o Master" : "Excluir"}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredUsers.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">Nenhum usuário cadastrado</p>
+                  )}
+                </div>
+              )}
+              </div>
+              {userTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-1 mt-3">
+                  <Button variant="outline" size="sm" disabled={userPage === 1} onClick={() => setUserPage(p => Math.max(1, p - 1))} className="h-8 px-3 rounded-lg">Anterior</Button>
+                  {Array.from({ length: userTotalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setUserPage(page)}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${userPage === page ? "bg-branding-secondary text-white" : "bg-card border border-outline-variant hover:bg-surface-container-low"}`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <Button variant="outline" size="sm" disabled={userPage === userTotalPages} onClick={() => setUserPage(p => Math.min(userTotalPages, p + 1))} className="h-8 px-3 rounded-lg">Próxima</Button>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-2 text-right">{filteredUsers.length} de {visibleUsers.length} usuário(s) • Página {userPage} de {userTotalPages} • limite 5 por página {userSearch && `filtrados por "${userSearch}"`}</p>
             </CardContent>
-          </Card>
-          )}
+           </Card>
+           )}
 
-          {/* Modalities Management */}
-          <ModalitiesSection />
+          {/* Tipos de Estabelecimento - vinculado ao campo empresas.estabelecimento_tipo */}
+          {isSuperAdmin && <EstablishmentTypesSection />}
 
           {/* No global save button needed - per-company cards have their own save */}
         </div>
