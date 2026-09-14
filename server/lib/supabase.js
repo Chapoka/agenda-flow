@@ -25,6 +25,12 @@ try {
 
 const supabaseUrl = process.env.SUPABASE_INTERNAL_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Loga qual rede está usando (interna = sem internet, mais rápido)
+if (!process.env.SUPABASE_INTERNAL_URL) {
+  console.warn("[supabase] SUPABASE_INTERNAL_URL não definido, usando VITE_SUPABASE_URL (via internet) - defina http://agendaflow-supabase-kong:8000 no EasyPanel");
+} else {
+  console.log(`[supabase] Conectado via rede interna: ${supabaseUrl}`);
+}
 
 export function createServerSupabase() {
   if (!supabaseUrl || !supabaseServiceKey) {
