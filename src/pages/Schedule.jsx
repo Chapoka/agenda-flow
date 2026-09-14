@@ -27,7 +27,7 @@ import {
 
 function getStoredCalendarTokens() {
   try {
-    const userId = JSON.parse(localStorage.getItem("sb-gestaodesaloes-auth-token") || "{}")?.user?.id;
+    const userId = JSON.parse(localStorage.getItem("sb-agendaflow-auth-token") || "{}")?.user?.id;
     if (!userId) return null;
     const raw = localStorage.getItem(`calendar_tokens_${userId}`);
     return raw ? JSON.parse(raw) : null;
