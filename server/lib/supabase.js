@@ -23,12 +23,12 @@ try {
   console.error("Erro ao carregar .env do servidor:", e);
 }
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseUrl = process.env.SUPABASE_INTERNAL_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export function createServerSupabase() {
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error("VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
+    throw new Error("SUPABASE_INTERNAL_URL (ou VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY must be set");
   }
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
