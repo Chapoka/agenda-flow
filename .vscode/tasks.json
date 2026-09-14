@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev",
+      "type": "npm",
+      "script": "dev",
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "build",
+      "type": "npm",
+      "script": "build",
+      "problemMatcher": ["$tsc"],
+      "group": "build"
+    },
+    {
+      "label": "lint",
+      "type": "npm",
+      "script": "lint",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "supabase: link",
+      "type": "shell",
+      "command": "npx supabase link --project-ref ${input:supabaseProjectRef}",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "supabaseProjectRef",
+      "type": "promptString",
+      "description": "Supabase project ref (ex: fpczjb...)",
+      "default": ""
+    }
+  ]
+}

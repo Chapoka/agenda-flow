@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-ssr
+build
+coverage
+test-results
+playwright-report
+stitch-output
+supabase/.branches
+supabase/.temp

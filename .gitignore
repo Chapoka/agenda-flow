@@ -1,12 +1,26 @@
-#env
+# Env - nunca commitar segredos
 .env
 .env.*
-!.env.local
-# Sensitive files
+!.env.example
+!.env.local.example
+# .env.local contem VITE_SUPABASE_ANON_KEY (pode ser commitado se anon)
+# mas server/.env contem service_role - NUNCA commitar
+server/.env
+backup/
+
+# Sensitive / local
 .env.stitch
-test-results/
-stitch-output/
-scripts/
+.env.vscode/
+
+# Build
+dist
+dist-ssr
+*.local
+!.env.local
+
+# Deps
+node_modules
+# package-lock DEVE ser commitado (necessário pro npm ci no Docker/EasyPanel)
 
 # Logs
 logs
@@ -16,16 +30,22 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+server.out.log
+server.err.log
 
-node_modules
-dist
-dist-ssr
-*.local
-!.env.local
+# Tests & generated
+test-results/
+playwright-report/
+stitch-output/
+scripts/
+coverage/
 
-# Editor directories and files
+# Editor - manter configs essenciais do VSCode versionadas
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 !.vscode/mcp.json
 .idea
 .DS_Store
@@ -35,5 +55,6 @@ dist-ssr
 *.sln
 *.sw?
 
-.env.vscode/
-.vscode/
+# Supabase local
+supabase/.branches
+supabase/.temp

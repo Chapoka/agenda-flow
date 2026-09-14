@@ -1,12 +1,13 @@
 {
   "recommendations": [
-    "ms-python.python",
     "esbenp.prettier-vscode",
     "dbaeumer.vscode-eslint",
     "bradlc.vscode-tailwindcss",
     "eamodio.gitlens",
     "formulahendry.auto-rename-tag",
     "christian-kohler.path-intellisense",
-    "visualstudioexptteam.vscodeintellicopilot"
+    "usernamehw.errorlens",
+    "editorconfig.editorconfig",
+    "yoavbls.pretty-ts-errors"
   ]
 }
