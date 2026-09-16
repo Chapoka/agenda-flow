@@ -9,7 +9,6 @@ import {
   Settings,
   Menu,
   X,
-  Scissors,
   LogOut,
   ListOrdered,
   MessageSquare,

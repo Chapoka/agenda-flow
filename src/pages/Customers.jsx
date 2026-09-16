@@ -52,7 +52,7 @@ import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { logger, logCustomer, logCustomersArray } from "@/lib/debugLogger";
+import { logger, logCustomersArray } from "@/lib/debugLogger";
 
 export default function Customers() {
   const queryClient = useQueryClient();
