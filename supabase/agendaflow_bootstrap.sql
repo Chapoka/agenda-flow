@@ -1,6 +1,6 @@
 -- ============================================
 -- AgendaFlow - Bootstrap completo para novo projeto Supabase
--- Projeto: agendaflow (EasyPanel: agendaflow-supabasegestaodesaloes)
+-- Projeto: agendaflow (EasyPanel: agendaflow-supabase)
 -- Rode este arquivo INTEIRO no SQL Editor do novo Supabase (como postgres)
 -- Idempotente: usa IF NOT EXISTS
 -- ============================================
