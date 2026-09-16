@@ -27,6 +27,30 @@
       "type": "shell",
       "command": "npx supabase link --project-ref ${input:supabaseProjectRef}",
       "problemMatcher": []
+    },
+    {
+      "label": "supabase: push migrations",
+      "type": "shell",
+      "command": "npx supabase db push",
+      "problemMatcher": []
+    },
+    {
+      "label": "supabase: gen keys",
+      "type": "shell",
+      "command": "node scripts/generate-supabase-keys.mjs",
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: build (EasyPanel test)",
+      "type": "shell",
+      "command": "docker build --build-arg VITE_SUPABASE_URL=${input:viteUrl} --build-arg VITE_SUPABASE_ANON_KEY=${input:viteAnon} -t agendaflow:test .",
+      "problemMatcher": []
+    },
+    {
+      "label": "git: push + deploy",
+      "type": "shell",
+      "command": "git push origin main && echo '✅ Push feito! Verifique EasyPanel > agendaflow-app > Deploy Logs'",
+      "problemMatcher": []
     }
   ],
   "inputs": [
@@ -34,6 +58,18 @@
       "id": "supabaseProjectRef",
       "type": "promptString",
       "description": "Supabase project ref (ex: fpczjb...)",
+      "default": ""
+    },
+    {
+      "id": "viteUrl",
+      "type": "promptString",
+      "description": "VITE_SUPABASE_URL",
+      "default": "https://agendaflow-supabase.fpczjb.easypanel.host"
+    },
+    {
+      "id": "viteAnon",
+      "type": "promptString",
+      "description": "VITE_SUPABASE_ANON_KEY",
       "default": ""
     }
   ]
