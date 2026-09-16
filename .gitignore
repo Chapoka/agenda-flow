@@ -6,8 +6,8 @@
 # .env.local contem VITE_SUPABASE_ANON_KEY (pode ser commitado se anon)
 # mas server/.env contem service_role - NUNCA commitar
 server/.env
-backup/*
-!backup/Dockerfile
+# backup/ mantido localmente apenas, nunca versionado (1 arquivo de cada na raiz)
+backup/
 
 # Sensitive / local
 .env.stitch
