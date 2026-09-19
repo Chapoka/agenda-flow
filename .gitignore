@@ -55,6 +55,10 @@ coverage/
 *.sln
 *.sw?
 
+# EasyPanel - arquivos de cola (contêm chaves deste projeto, não commitar se forem secrets novos)
+EASYPANEL-*.env
+PASTE-*.env
+
 # Supabase local
 supabase/.branches
 supabase/.temp
