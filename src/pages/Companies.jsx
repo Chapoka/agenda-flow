@@ -142,7 +142,7 @@ export default function Companies() {
       if (responsible_admin_id && result?.id) {
         try {
           await supabase.from("user_companies").upsert({ user_id: responsible_admin_id, company_id: result.id }, { onConflict: "user_id,company_id" });
-          await supabase.from("users").update({ company_id: result.id, is_professional: true }).eq("id", responsible_admin_id);
+          await supabase.from("users").update({ company_id: result.id, is_professional: true, is_master: true }).eq("id", responsible_admin_id);
         } catch (e) { console.warn("Falha ao vincular responsável:", e); }
       }
       return { ...result, responsible_admin_id };
@@ -164,7 +164,7 @@ export default function Companies() {
       if (responsible_admin_id) {
         try {
           await supabase.from("user_companies").upsert({ user_id: responsible_admin_id, company_id: id }, { onConflict: "user_id,company_id" });
-          await supabase.from("users").update({ is_professional: true }).eq("id", responsible_admin_id);
+          await supabase.from("users").update({ is_professional: true, is_master: true }).eq("id", responsible_admin_id);
         } catch (e) { console.warn("Falha ao vincular responsável:", e); }
       }
       return { ...result, responsible_admin_id };
