@@ -79,7 +79,7 @@ export default function Schedule() {
   const isAdmin = normalizedRole === "admin";
   const isProfissional = normalizedRole === "profissional";
   const companyId = currentUser?.company_id;
-  const [selectedCompanyId, setSelectedCompanyId] = useState("all");
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("all");
   const [selectedProfessionalId, setSelectedProfessionalId] = useState("all");
   const [agendaListView, setAgendaListView] = useState("grade");
@@ -238,10 +238,27 @@ export default function Schedule() {
     enabled: !!currentUser && (!!effectiveCompanyId || !!resolvedCompanyId || userCompanyIds.length > 0),
   });
 
+  const isOverlapping = (newAppt, existingList = appointments) => {
+    if (!newAppt.professional_id) return false;
+    return existingList.some(a => 
+      a.date === newAppt.date && 
+      a.professional_id && newAppt.professional_id && 
+      a.professional_id === newAppt.professional_id &&
+      !(newAppt.end_time <= a.start_time || newAppt.start_time >= a.end_time)
+    );
+  };
+
   const createAppointmentMutation = useMutation({
     mutationFn: async (data) => {
       // Support batch creation (array of appointments)
       const appointmentsArr = Array.isArray(data) ? data : [data];
+      // Valida sobreposição para o mesmo profissional
+      for (const item of appointmentsArr) {
+        if (isOverlapping(item)) {
+          const prof = allUsers.find(u => u.id === item.professional_id);
+          throw new Error(`Conflito: ${prof?.full_name || 'Profissional'} já tem agendamento em ${item.date} ${item.start_time}`);
+        }
+      }
       const results = [];
       for (const item of appointmentsArr) {
         const { original_appointment_id, ...appointmentData } = item;
@@ -465,6 +482,29 @@ export default function Schedule() {
     const dateStr = fnsFormat(date, "yyyy-MM-dd");
     return blockedTimes.some(bt => isBlockedForDate(bt, dateStr) && time >= bt.start_time && time < bt.end_time);
   };
+
+  // Aviso 5min antes de slot vazio sem profissional
+  useEffect(() => {
+    const check = () => {
+      const now = new Date();
+      const in5 = new Date(now.getTime() + 5*60*1000);
+      const upcoming = appointments.filter(a => {
+        if (a.professional_id || a.teacher_id) return false;
+        if (["cancelled","present","absent"].includes(a.status)) return false;
+        const apptTime = new Date(a.date + "T" + (a.start_time || "00:00") + ":00");
+        return apptTime > now && apptTime <= in5;
+      });
+      upcoming.forEach(a => {
+        toast.warning(`Agendamento avulso em 5min: ${a.customer_name || "Cliente"} às ${a.start_time} - vincule um profissional`, {
+          action: { label: "Vincular", onClick: () => setSelectedAppointment(a) },
+          duration: 10000,
+        });
+      });
+    };
+    const id = setInterval(check, 60000);
+    check();
+    return () => clearInterval(id);
+  }, [appointments]);
 
   const handleSlotClick = (date, time) => {
     if (!isDayOpen(date)) {
