@@ -6,11 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export default function EstablishmentTypesSection() {
   const queryClient = useQueryClient();
   const [newName, setNewName] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState("");
 
@@ -89,7 +92,12 @@ export default function EstablishmentTypesSection() {
   const handleCreate = () => {
     const trimmed = newName.trim();
     if (!trimmed) return;
-    createMutation.mutate(trimmed);
+    createMutation.mutate(trimmed, {
+      onSuccess: () => {
+        setNewName("");
+        setShowAddModal(false);
+      }
+    });
   };
 
   const handleUpdate = () => {
@@ -118,22 +126,43 @@ export default function EstablishmentTypesSection() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} className="flex gap-2">
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Nome do novo tipo de estabelecimento"
-            className="rounded-xl flex-1"
-            />
+        <div className="flex justify-end">
           <Button
-          type="submit"
-            disabled={createMutation.isPending}
-            className="rounded-xl bg-branding-primary hover:bg-branding-primary/90 shrink-0 px-6 min-w-[110px] disabled:opacity-50"
+            onClick={() => setShowAddModal(true)}
+            className="rounded-xl bg-branding-primary hover:bg-branding-primary/90"
           >
-            <Plus className="w-4 h-4 mr-1" />
+            <Plus className="w-4 h-4 mr-2" />
             Adicionar
           </Button>
-        </form>
+        </div>
+
+        <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+          <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Novo Tipo de Estabelecimento</DialogTitle>
+              <DialogDescription>Digite o nome da nova categoria</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Nome *</Label>
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
+                  placeholder="Ex: Clínica Geral"
+                  className="rounded-xl"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => { setShowAddModal(false); setNewName(""); }} className="rounded-xl">Cancelar</Button>
+                <Button onClick={handleCreate} disabled={createMutation.isPending || !newName.trim()} className="rounded-xl bg-branding-primary hover:bg-branding-primary/90 disabled:opacity-50">
+                  {createMutation.isPending ? "Criando..." : "Criar"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {isUsingFallback && (
           <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
