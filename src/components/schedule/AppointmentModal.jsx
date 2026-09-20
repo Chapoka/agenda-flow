@@ -112,7 +112,7 @@ export default function AppointmentModal({ appointment, open, onClose, onUpdateS
                     <div className="flex-1">
                       <p className="font-medium text-on-surface text-sm">{gl.customer_name}</p>
                       <p className="text-xs text-on-surface-variant">
-                        {(gl.service_category || gl.modality) === "corte" ? "Corte" : "Barba"} • {gl.duration_mins} min
+                        {(gl.service_category || gl.modality) ? (gl.service_category || gl.modality).charAt(0).toUpperCase() + (gl.service_category || gl.modality).slice(1) : "Serviço"} • {gl.duration_mins} min
                       </p>
                     </div>
                   </div>
@@ -126,7 +126,7 @@ export default function AppointmentModal({ appointment, open, onClose, onUpdateS
                 <div>
                   <p className="font-medium text-on-surface">{appointment.customer_name}</p>
                   <p className="text-sm text-on-surface-variant capitalize">
-                    {(appointment.service_category || appointment.modality) === "corte" ? "Corte" : "Barba"}
+                    {(appointment.service_category || appointment.modality) ? (appointment.service_category || appointment.modality).charAt(0).toUpperCase() + (appointment.service_category || appointment.modality).slice(1) : "Serviço"}
                   </p>
                 </div>
               </div>
@@ -293,7 +293,7 @@ export default function AppointmentModal({ appointment, open, onClose, onUpdateS
                     Baixar .ics
                   </Button>
                   <a
-                    href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent((appointment.service_category || appointment.modality) === "corte" ? "Corte" : "Barba")}&dates=${appointment.date?.replace(/-/g, "")}T${(appointment.start_time || "09:00").replace(":", "")}00/${appointment.date?.replace(/-/g, "")}T${(appointment.end_time || "09:30").replace(":", "")}00`}
+                    href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent((appointment.service_category || appointment.modality) ? (appointment.service_category || appointment.modality).charAt(0).toUpperCase() + (appointment.service_category || appointment.modality).slice(1) : "Serviço")}&dates=${appointment.date?.replace(/-/g, "")}T${(appointment.start_time || "09:00").replace(":", "")}00/${appointment.date?.replace(/-/g, "")}T${(appointment.end_time || "09:30").replace(":", "")}00`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -303,7 +303,7 @@ export default function AppointmentModal({ appointment, open, onClose, onUpdateS
                     </Button>
                   </a>
                   <a
-                    href={`https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${encodeURIComponent((appointment.service_category || appointment.modality) === "corte" ? "Corte" : "Barba")}&startdt=${appointment.date}T${appointment.start_time || "09:00"}:00&enddt=${appointment.date}T${appointment.end_time || "09:30"}:00`}
+                    href={`https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${encodeURIComponent((appointment.service_category || appointment.modality) ? (appointment.service_category || appointment.modality).charAt(0).toUpperCase() + (appointment.service_category || appointment.modality).slice(1) : "Serviço")}&startdt=${appointment.date}T${appointment.start_time || "09:00"}:00&enddt=${appointment.date}T${appointment.end_time || "09:30"}:00`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

@@ -18,6 +18,11 @@ const emptyForm = {
 };
 
 const FALLBACK_ESTABLISHMENT_TYPES = {
+  atendimento_geral: "Atendimento Geral",
+  clinica_saude: "Clínica / Saúde",
+  consultorio: "Consultório",
+  estudio: "Estúdio",
+  // legado - compatibilidade
   barbearia: "Barbearia",
   clinica_estetica: "Clínica / Estética",
   salao_beleza: "Empresa de Beleza",

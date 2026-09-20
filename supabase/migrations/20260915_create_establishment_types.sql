@@ -37,8 +37,12 @@ CREATE POLICY "establishment_types_update" ON establishment_types FOR UPDATE USI
 DROP POLICY IF EXISTS "establishment_types_delete" ON establishment_types;
 CREATE POLICY "establishment_types_delete" ON establishment_types FOR DELETE USING (public.is_super_admin());
 
--- Inserir tipos padrão (se não existirem)
+-- Inserir tipos padrão genéricos (mantém legados para compatibilidade)
 INSERT INTO establishment_types (name, slug) VALUES
+  ('Atendimento Geral', 'atendimento_geral'),
+  ('Clínica / Saúde', 'clinica_saude'),
+  ('Consultório', 'consultorio'),
+  ('Estúdio', 'estudio'),
   ('Barbearia', 'barbearia'),
   ('Clínica / Estética', 'clinica_estetica'),
   ('Empresa de Beleza', 'salao_beleza'),

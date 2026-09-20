@@ -217,7 +217,7 @@ export default function BlockedTimesModal({ open, onClose, company, companies = 
                 onCheckedChange={setBlockAllBarbers}
               />
               <Label htmlFor="blockAllBarbers" className="text-sm font-medium text-on-surface cursor-pointer">
-                Bloquear este horário para TODOS OS BARBEIROS
+                Bloquear este horário para TODOS OS PROFISSIONAIS
               </Label>
             </div>
 

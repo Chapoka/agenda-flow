@@ -78,7 +78,7 @@ export default function Layout({ children, currentPageName }) {
   });
 
   // Super admin sem empresa vinculada: buscar primeira empresa disponível
-  const { data: firstCompany } = useQuery({
+  const { data: firstCompany, isLoading: firstCompanyLoading } = useQuery({
     queryKey: ["firstCompany"],
     queryFn: () => db.entities.Company.list("-created_at", 1).then(c => c?.[0] || null),
     enabled: isSuperAdmin && !userCompanyId,
@@ -107,7 +107,7 @@ export default function Layout({ children, currentPageName }) {
 
   const theme = useThemeMode();
   const toggleTheme = useToggleTheme();
-  const loading = userLoading || (userCompanyId && companyLoading) || (isSuperAdmin && !userCompanyId && !firstCompany);
+  const loading = userLoading || (userCompanyId && companyLoading) || (isSuperAdmin && !userCompanyId && firstCompanyLoading);
 
   useEffect(() => {
     const root = document.documentElement;

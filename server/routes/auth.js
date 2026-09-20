@@ -264,6 +264,12 @@ router.post("/admin-delete-user", async (req, res) => {
       return res.status(403).json({ error: "Acesso negado" });
     }
 
+    // Bloqueia exclusão de super_admin via app - só via SQL direto no Supabase (Studio > SQL Editor)
+    const { data: targetProfile } = await req.supabase.from("users").select("role,email").eq("id", user_id).single();
+    if (targetProfile?.role === "super_admin") {
+      return res.status(403).json({ error: `super_admin "${targetProfile.email}" não pode ser deletado via app. Use Supabase Studio > SQL Editor (como postgres): DELETE FROM auth.users WHERE id = '${user_id}';` });
+    }
+
     // Admin só pode excluir profissionais vinculados à sua empresa
     if (profile?.role === "admin") {
       const { data: callerCompanies } = await req.supabase

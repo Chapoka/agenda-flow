@@ -265,7 +265,7 @@ export default function CustomerDetail() {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {appointment.start_time} • {appointment.duration_mins}min • {" "}
-                             {(appointment.service_category || appointment.modality) === "corte" ? "Corte" : (appointment.service_category || appointment.modality) === "barba" ? "Barba" : "Serviço"}
+                             {(appointment.service_category || appointment.modality) ? (appointment.service_category || appointment.modality).charAt(0).toUpperCase() + (appointment.service_category || appointment.modality).slice(1) : "Serviço"}
                           </p>
                         </div>
                       </div>
@@ -320,7 +320,7 @@ export default function CustomerDetail() {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {appointment.start_time} • {appointment.duration_mins}min • {" "}
-                             {(appointment.service_category || appointment.modality) === "corte" ? "Corte" : (appointment.service_category || appointment.modality) === "barba" ? "Barba" : "Serviço"}
+                             {(appointment.service_category || appointment.modality) ? (appointment.service_category || appointment.modality).charAt(0).toUpperCase() + (appointment.service_category || appointment.modality).slice(1) : "Serviço"}
                           </p>
                         </div>
                       </div>
@@ -467,7 +467,7 @@ export default function CustomerDetail() {
                     <span className="font-medium">{nextAppointment.start_time}</span>
                   </div>
                   <Badge className="bg-branding-primary/10 text-branding-primary">
-                    {(nextAppointment.service_category || nextAppointment.modality) === "corte" ? "✂️ Corte" : "🪒 Barba"}
+                    {(nextAppointment.service_category || nextAppointment.modality) ? (nextAppointment.service_category || nextAppointment.modality).charAt(0).toUpperCase() + (nextAppointment.service_category || nextAppointment.modality).slice(1) : "Serviço"}
                   </Badge>
                 </div>
               </div>

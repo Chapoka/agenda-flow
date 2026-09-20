@@ -33,10 +33,10 @@ export default function EstablishmentTypesSection() {
   });
 
   const FALLBACK_TYPES = [
-    { id: "fallback-barbearia", name: "Barbearia", slug: "barbearia", _fallback: true },
-    { id: "fallback-clinica_estetica", name: "Clínica / Estética", slug: "clinica_estetica", _fallback: true },
-    { id: "fallback-salao_beleza", name: "Empresa de Beleza", slug: "salao_beleza", _fallback: true },
-    { id: "fallback-studio_manicure", name: "Studio / Manicure", slug: "studio_manicure", _fallback: true },
+    { id: "fallback-atendimento_geral", name: "Atendimento Geral", slug: "atendimento_geral", _fallback: true },
+    { id: "fallback-clinica_saude", name: "Clínica / Saúde", slug: "clinica_saude", _fallback: true },
+    { id: "fallback-consultorio", name: "Consultório", slug: "consultorio", _fallback: true },
+    { id: "fallback-studio", name: "Estúdio", slug: "estudio", _fallback: true },
   ];
   const displayTypes = types.length ? types : FALLBACK_TYPES;
   const isUsingFallback = types.length === 0 && !isLoading;
@@ -118,23 +118,22 @@ export default function EstablishmentTypesSection() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} className="flex gap-2">
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreate(); } }}
             placeholder="Nome do novo tipo de estabelecimento"
-            className="rounded-xl"
-          />
+            className="rounded-xl flex-1"
+            />
           <Button
-            onClick={handleCreate}
-            disabled={createMutation.isPending || !newName.trim()}
-            className="rounded-xl bg-branding-primary hover:bg-branding-primary/90 shrink-0"
+          type="submit"
+            disabled={createMutation.isPending}
+            className="rounded-xl bg-branding-primary hover:bg-branding-primary/90 shrink-0 px-6 min-w-[110px] disabled:opacity-50"
           >
             <Plus className="w-4 h-4 mr-1" />
             Adicionar
           </Button>
-        </div>
+        </form>
 
         {isUsingFallback && (
           <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">

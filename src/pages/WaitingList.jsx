@@ -194,8 +194,10 @@ export default function WaitingList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="corte">Corte</SelectItem>
-                  <SelectItem value="barba">Barba</SelectItem>
+                  <SelectItem value="servico">Serviço</SelectItem>
+                  <SelectItem value="consulta">Consulta</SelectItem>
+                  <SelectItem value="corte">Corte (legado)</SelectItem>
+                  <SelectItem value="barba">Barba (legado)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -284,7 +286,7 @@ export default function WaitingList() {
                       <td className="px-4 py-3"><div className="w-8 h-8 rounded-full bg-gradient-to-br from-branding-primary to-branding-secondary flex items-center justify-center text-white font-bold text-sm">{index+1}</div></td>
                       <td className="px-4 py-3 font-medium text-on-surface">{item.customer_name}</td>
                       {isSuperAdmin && <td className="px-4 py-3 hidden lg:table-cell">{item.company_id ? <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(item.company_id)}</Badge> : <span className="text-muted-foreground">—</span>}</td>}
-                      <td className="px-4 py-3 hidden md:table-cell"><Badge className={cn("border", item.modality === "corte" ? "bg-branding-primary/10 text-branding-primary border-branding-primary/20" : "bg-branding-secondary/10 text-branding-secondary border-branding-secondary/20")}>{item.modality === "corte" ? "Corte" : "Barba"}</Badge></td>
+                      <td className="px-4 py-3 hidden md:table-cell"><Badge className="border bg-branding-primary/10 text-branding-primary border-branding-primary/20">{item.modality ? item.modality.charAt(0).toUpperCase() + item.modality.slice(1) : "Serviço"}</Badge></td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{item.duration_mins}min</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{item.whatsapp || "—"}</td>
                       <td className="px-4 py-3">{item.priority === "urgent" ? <Badge className="bg-red-500/20 text-red-300">Urgente</Badge> : <Badge variant="outline">{item.priority}</Badge>}</td>
@@ -321,13 +323,8 @@ export default function WaitingList() {
                         {isSuperAdmin && item.company_id && <Badge variant="outline" className="text-[11px] bg-amber-500/20 text-amber-300 border-amber-500/30 inline-flex items-center gap-1"><Building2 className="w-3 h-3" />{getCompanyName(item.company_id)}</Badge>}
                       </h3>
                       <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <Badge                         className={cn(
-                          "border",
-                          item.modality === "corte" 
-                            ? "bg-branding-primary/10 text-branding-primary border-branding-primary/20" 
-                            : "bg-branding-secondary/10 text-branding-secondary border-branding-secondary/20"
-                        )}>
-                          {item.modality === "corte" ? "Corte" : "Barba"}
+                        <Badge className="border bg-branding-primary/10 text-branding-primary border-branding-primary/20">
+                          {item.modality ? item.modality.charAt(0).toUpperCase() + item.modality.slice(1) : "Serviço"}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
                           <Clock className="w-3 h-3 mr-1" />
@@ -440,8 +437,10 @@ export default function WaitingList() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="corte">Corte</SelectItem>
-                      <SelectItem value="barba">Barba</SelectItem>
+                      <SelectItem value="servico">Serviço</SelectItem>
+                      <SelectItem value="consulta">Consulta</SelectItem>
+                      <SelectItem value="corte">Corte (legado)</SelectItem>
+                      <SelectItem value="barba">Barba (legado)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

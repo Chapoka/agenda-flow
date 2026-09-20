@@ -191,15 +191,14 @@ export default function Settings() {
   const visibleUsers = isSuperAdmin
     ? users.filter(u => {
         const uRole = u.role === "teacher" ? "profissional" : u.role === "user" ? "cliente" : u.role;
-        return uRole === "super_admin" || uRole === "admin";
+        return ["super_admin","admin","profissional"].includes(uRole);
       })
     : isAdmin
       ? users.filter(u => {
           const uRole = u.role === "teacher" ? "profissional" : u.role === "user" ? "cliente" : u.role;
           const uIds = u.company_ids?.length ? u.company_ids : (u.company_id ? [u.company_id] : []);
-          // Admin não pode alterar a si mesmo, só outros admins da mesma empresa
           if (u.id === currentUser?.id) return false;
-          return (uRole === "super_admin" || uRole === "admin") && currentUserCompanyIds.some(cid => uIds.includes(cid));
+          return ["admin","profissional"].includes(uRole) && currentUserCompanyIds.some(cid => uIds.includes(cid));
         })
       : [];
 

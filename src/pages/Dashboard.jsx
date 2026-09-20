@@ -246,7 +246,7 @@ function SuperAdminDashboard({ currentUser }) {
                 <h3 className="text-3xl font-extrabold text-text-main">{totalProfessionals}</h3>
               </div>
               <div className="w-10 h-10 rounded-full bg-[#c084fc]/10 flex items-center justify-center text-[#c084fc]">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>content_cut</span>
+                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>group</span>
               </div>
             </div>
             <div className="flex items-center gap-1 text-sm font-medium text-text-muted">
@@ -304,7 +304,7 @@ function SuperAdminDashboard({ currentUser }) {
                         <p className="text-xs text-text-muted">Faturamento</p>
                       </div>
                       <div className="bg-surface-hover rounded-lg p-3 text-center">
-                        <span className="material-symbols-outlined text-[#c084fc] text-sm block mb-1">content_cut</span>
+                        <span className="material-symbols-outlined text-[#c084fc] text-sm block mb-1">group</span>
                         <p className="text-xl font-bold text-text-main">{company.teacherCount}</p>
                         <p className="text-xs text-text-muted">Profissionais</p>
                       </div>
@@ -687,7 +687,7 @@ function SalonDashboard({ currentUser, isProfissional, companyId }) {
                 <h3 className="text-3xl font-extrabold text-text-main">{activeProfessionals}</h3>
               </div>
               <div className="w-10 h-10 rounded-full bg-[#c084fc]/10 flex items-center justify-center text-[#c084fc]">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>content_cut</span>
+                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>group</span>
               </div>
             </div>
             <div className="flex items-center gap-1 text-sm font-medium text-text-muted">
@@ -781,7 +781,7 @@ function SalonDashboard({ currentUser, isProfissional, companyId }) {
                       <div>
                         <p className="font-medium text-text-main">{appointment.customer_name}</p>
                         <p className="text-sm text-text-muted">
-                          {appointment.service_category === "corte" ? "Corte" : "Barba"}
+                          {appointment.service_category ? appointment.service_category.charAt(0).toUpperCase() + appointment.service_category.slice(1) : "Serviço"}
                         </p>
                       </div>
                     </div>

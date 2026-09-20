@@ -373,6 +373,10 @@ CREATE TRIGGER establishment_types_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_establishment_types_updated_at();
 
 INSERT INTO establishment_types (name, slug) VALUES
+  ('Atendimento Geral', 'atendimento_geral'),
+  ('Clínica / Saúde', 'clinica_saude'),
+  ('Consultório', 'consultorio'),
+  ('Estúdio', 'estudio'),
   ('Barbearia', 'barbearia'),
   ('Clínica / Estética', 'clinica_estetica'),
   ('Empresa de Beleza', 'salao_beleza'),

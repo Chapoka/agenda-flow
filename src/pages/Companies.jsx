@@ -37,6 +37,11 @@ import { toast } from "sonner";
 import CompanyFormModal from "@/components/companies/CompanyFormModal";
 
 const FALLBACK_ESTABELECIMENTO_LABELS = {
+  atendimento_geral: "Atendimento Geral",
+  clinica_saude: "Clínica / Saúde",
+  consultorio: "Consultório",
+  estudio: "Estúdio",
+  // legado
   barbearia: "Barbearia",
   clinica_estetica: "Clínica / Estética",
   salao_beleza: "Empresa de Beleza",

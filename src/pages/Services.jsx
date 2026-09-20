@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/components/auth/useCurrentUser";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import {
-  Scissors,
   Plus,
   Edit,
   Trash2,
@@ -457,7 +456,7 @@ export default function Services() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { label: "Itens Ativos", value: services.filter(s => getEffectiveActive(s)).length, icon: Scissors, color: "text-blue-400" },
+          { label: "Itens Ativos", value: services.filter(s => getEffectiveActive(s)).length, icon: Package, color: "text-blue-400" },
           { label: "Inativos", value: services.filter(s => !getEffectiveActive(s)).length, icon: PowerOff, color: "text-muted-foreground" },
           { label: "Preço Médio", value: `R$ ${avgPrice}`, icon: DollarSign, color: "text-emerald-400" },
           { label: "Margem Média", value: avgMargin !== "-" ? `${avgMargin}%` : "-", icon: DollarSign, color: "text-blue-400" },
@@ -577,7 +576,7 @@ export default function Services() {
             <div className="text-center py-12 text-muted-foreground">Carregando...</div>
           ) : sortedServices.length === 0 ? (
             <div className="text-center py-12">
-              <Scissors className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+              <Package className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
               <p className="text-muted-foreground">Nenhum serviço encontrado</p>
               <Button
                 onClick={() => { setEditingService(null); setServiceForm(EMPTY_SERVICE); setShowServiceForm(true); }}
@@ -611,7 +610,7 @@ export default function Services() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-lg bg-branding-primary/10 flex items-center justify-center flex-shrink-0">
-                                {svc.type === "product" ? <Package className="w-4 h-4 text-branding-primary" /> : <Scissors className="w-4 h-4 text-branding-primary" />}
+                                {svc.type === "product" ? <Package className="w-4 h-4 text-branding-primary" /> : <Calendar className="w-4 h-4 text-branding-primary" />}
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium text-on-surface truncate flex items-center gap-1.5">
@@ -688,7 +687,7 @@ export default function Services() {
                           {svc.type === "product" ? (
                             <Package className="w-5 h-5 text-branding-primary" />
                           ) : (
-                            <Scissors className="w-5 h-5 text-branding-primary" />
+                            <Calendar className="w-5 h-5 text-branding-primary" />
                           )}
                         </div>
                         <div>

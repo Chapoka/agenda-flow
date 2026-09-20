@@ -259,15 +259,7 @@ export default function Login() {
             </form>
           </div>
 
-          {/* Footer Link */}
-          <div className="text-center fade-in-up delay-200">
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Não tem uma conta?{" "}
-              <Link to="/register" className="text-tertiary hover:text-tertiary-fixed-dim font-semibold transition-colors">
-                Cadastre-se
-              </Link>
-            </p>
-          </div>
+
         </div>
       </div>
 

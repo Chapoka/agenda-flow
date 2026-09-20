@@ -663,7 +663,7 @@ export default function CustomerPortal() {
 
                   <div className="flex items-center gap-2 mb-4">
                     <Badge className="bg-branding-primary/10 text-branding-primary">
-                      {appointment.service_category === "corte" ? "✂️ Corte" : "🪒 Barba"}
+                      {appointment.service_category ? appointment.service_category.charAt(0).toUpperCase() + appointment.service_category.slice(1) : "Serviço"}
                     </Badge>
                     <Badge className={statusClass[appointment.status] || "bg-gray-100 text-gray-500"}>
                       {statusLabel[appointment.status] || appointment.status}
@@ -731,7 +731,7 @@ export default function CustomerPortal() {
                         </p>
                         <p className="text-sm text-gray-500">
                           {appointment.start_time} • {appointment.duration_mins} min •{" "}
-                          {appointment.service_category === "corte" ? "Corte" : "Barba"}
+                          {appointment.service_category ? appointment.service_category.charAt(0).toUpperCase() + appointment.service_category.slice(1) : "Serviço"}
                         </p>
                         {appointment.cancellation_reason && (
                           <p className="text-xs text-gray-500 mt-0.5">{appointment.cancellation_reason}</p>
