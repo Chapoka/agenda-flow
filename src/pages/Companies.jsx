@@ -244,6 +244,17 @@ export default function Companies() {
         return toast.error(`O campo "${field.label}" precisa ser preenchido`);
       }
     }
+    // CNPJ/CPF duplicado
+    const cleanCnpj = form.cnpj ? String(form.cnpj).replace(/\D/g, "") : "";
+    const cleanCpf = form.cpf_document ? String(form.cpf_document).replace(/\D/g, "") : "";
+    if (cleanCnpj) {
+      const dup = companies.find(c => c.cnpj && String(c.cnpj).replace(/\D/g, "") === cleanCnpj && c.id !== editing?.id);
+      if (dup) return toast.error(`CNPJ já cadastrado em "${dup.name}"`);
+    }
+    if (cleanCpf) {
+      const dup = companies.find(c => c.cpf_document && String(c.cpf_document).replace(/\D/g, "") === cleanCpf && c.id !== editing?.id);
+      if (dup) return toast.error(`CPF já cadastrado em "${dup.name}"`);
+    }
     // Sanitize data: convert formatted strings to proper types
     const COMPANY_COLUMNS = [
       "name", "cnpj", "cpf_document", "tipo", "estabelecimento_tipo", "razao_social", "situacao_cadastral",
