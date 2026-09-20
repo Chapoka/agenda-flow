@@ -316,14 +316,22 @@ export default function Settings() {
           .update(cleanData)
           .eq("id", editingUser.id);
         if (updateError) throw updateError;
-        await supabase.from("user_companies").delete().eq("user_id", editingUser.id);
-        if (userData.company_ids?.length) {
-          const rows = userData.company_ids.map(company_id => ({
-            user_id: editingUser.id,
-            company_id,
-          }));
-          const { error: insertError } = await supabase.from("user_companies").insert(rows);
-          if (insertError) throw insertError;
+        // Preserva vínculos existentes e adiciona novos (não apaga tudo para não perder se RLS falhar)
+        if (userData.company_ids !== undefined) {
+          const { data: existing } = await supabase.from("user_companies").select("company_id").eq("user_id", editingUser.id);
+          const existingIds = new Set((existing || []).map(r => r.company_id));
+          const desiredIds = new Set(userData.company_ids || []);
+          const toAdd = [...desiredIds].filter(id => !existingIds.has(id));
+          const toRemove = [...existingIds].filter(id => !desiredIds.has(id));
+          if (toRemove.length) {
+            const { error: delErr } = await supabase.from("user_companies").delete().in("company_id", toRemove).eq("user_id", editingUser.id);
+            if (delErr) throw delErr;
+          }
+          if (toAdd.length) {
+            const rows = toAdd.map(company_id => ({ user_id: editingUser.id, company_id }));
+            const { error: insErr } = await supabase.from("user_companies").upsert(rows, { onConflict: "user_id,company_id" });
+            if (insErr) throw insErr;
+          }
         }
         return editingUser;
       } else {
