@@ -733,6 +733,8 @@ export default function Schedule() {
             closingTime={currentCompany?.closing_time}
             openDays={currentCompany?.open_days}
             blockedTimes={blockedTimes}
+            companies={companies}
+            selectedCompanyId={isSuperAdmin ? selectedCompanyId : (companyId || null)}
           />
         )}
         {effectiveViewMode === "month" && (

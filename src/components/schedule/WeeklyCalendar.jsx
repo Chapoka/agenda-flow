@@ -4,6 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, User, Clock, Droplets, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const timeSlots = [];
@@ -103,21 +104,44 @@ const groupAppointments = (appointments, customers) => {
   return grouped;
 };
 
-export default function WeeklyCalendar({ appointments, customers = [], onAppointmentClick, onSlotClick, openingTime, closingTime, openDays, blockedTimes = [] }) {
+export default function WeeklyCalendar({ appointments, customers = [], onAppointmentClick, onSlotClick, openingTime, closingTime, openDays, blockedTimes = [], companies = [], selectedCompanyId = null }) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [closedPopup, setClosedPopup] = useState(null);
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const DAY_KEYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+  const isAllCompanies = !selectedCompanyId || selectedCompanyId === "all";
   const isDayOpen = (date) => {
+    if (isAllCompanies) return true;
     if (!openDays?.length) return true;
     return openDays.includes(DAY_KEYS[date.getDay()]);
   };
 
   const isSlotOutOfHours = (time) => {
+    if (isAllCompanies) return false;
     if (!openingTime || !closingTime) return false;
     return time < openingTime || time >= closingTime;
+  };
+
+  const isSlotClosedForAll = (date, time) => {
+    if (!isAllCompanies || !companies.length) return false;
+    const closed = getClosedCompaniesForSlot(date, time);
+    return closed.length > 0;
+  };
+
+  const getClosedCompaniesForSlot = (date, time) => {
+    if (!isAllCompanies || !companies.length) return [];
+    const dayKey = DAY_KEYS[date.getDay()];
+    return companies.filter(c => {
+      const cOpenDays = c.open_days;
+      const cOpening = c.opening_time;
+      const cClosing = c.closing_time;
+      if (cOpenDays?.length && !cOpenDays.includes(dayKey)) return true;
+      if (cOpening && cClosing && (time < cOpening || time >= cClosing)) return true;
+      return false;
+    });
   };
 
   const isBlockedForDate = (bt, dateStr) => {
@@ -285,6 +309,8 @@ export default function WeeklyCalendar({ appointments, customers = [], onAppoint
                   {/* Grid Lines */}
                   {timeSlots.map((time, i) => {
                     const outOfHours = isSlotOutOfHours(time);
+                    const isAllClosed = isAllCompanies && isSlotClosedForAll(day, time);
+                    const showClosed = (!isAllCompanies && outOfHours && dayIsOpen) || (isAllCompanies && isSlotClosedForAll(day, time));
                     return (
                       <div
                         key={i}
@@ -292,21 +318,26 @@ export default function WeeklyCalendar({ appointments, customers = [], onAppoint
                           "h-12 border-b transition-colors relative",
                           !dayIsOpen
                             ? "cursor-not-allowed border-outline-variant/10"
-                            : outOfHours ? "cursor-pointer border-red-500/20" : "cursor-pointer border-outline-variant/10 hover:bg-branding-primary/5"
+                            : showClosed ? "cursor-pointer border-red-500/20" : "cursor-pointer border-outline-variant/10 hover:bg-branding-primary/5"
                         )}
                         style={
                           !dayIsOpen ? { backgroundColor: "rgba(100,100,100,0.18)" } 
-                          : outOfHours ? { backgroundColor: "rgba(220,38,38,0.30)" } 
+                          : showClosed ? { backgroundColor: "rgba(220,38,38,0.30)" } 
                           : {}
                         }
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (dayIsOpen) onSlotClick && onSlotClick(day, time);
+                          if (isAllCompanies && isAllClosed) {
+                            setClosedPopup({ date: day, time, companies: getClosedCompaniesForSlot(day, time) });
+                            return;
+                          }
+                          if (dayIsOpen && !showClosed) onSlotClick && onSlotClick(day, time);
+                          else if (dayIsOpen && showClosed && !isAllCompanies) onSlotClick && onSlotClick(day, time);
                         }}
                       >
-                        {outOfHours && dayIsOpen && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(220,38,38,0.45)", color: "#fecaca" }}>Fechado</span>
+                        {showClosed && (
+                          <div className={`absolute inset-0 flex items-center justify-center ${isAllCompanies ? "cursor-pointer" : "pointer-events-none"}`} onClick={isAllCompanies ? (e) => { e.stopPropagation(); setClosedPopup({ date: day, time, companies: getClosedCompaniesForSlot(day, time) }); } : undefined}>
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded cursor-pointer hover:opacity-80" style={{ backgroundColor: "rgba(220,38,38,0.45)", color: "#fecaca" }}>Fechado</span>
                           </div>
                         )}
                       </div>
@@ -469,6 +500,23 @@ export default function WeeklyCalendar({ appointments, customers = [], onAppoint
           </div>
         </div>
       </div>
+
+      <Dialog open={!!closedPopup} onOpenChange={() => setClosedPopup(null)}>
+        <DialogContent className="sm:max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Horário Fechado</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {closedPopup && `Horário ${closedPopup.time} do dia ${format(closedPopup.date, "dd/MM/yyyy")} está fechado para:`}
+          </p>
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {closedPopup?.companies?.map(c => (
+              <div key={c.id} className="p-2 bg-surface-container-low rounded-lg text-sm font-medium">{c.name} {c.opening_time && c.closing_time ? `(${c.opening_time}-${c.closing_time})` : ""}</div>
+            ))}
+            {closedPopup?.companies?.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma empresa fechada neste horário</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
