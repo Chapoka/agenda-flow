@@ -63,12 +63,12 @@ export default function Settings() {
       const saved = localStorage.getItem("form_draft_user");
       return saved ? JSON.parse(saved) : {
         full_name: "", email: "", password: "", whatsapp: "", cpf: "", rg: "",
-        birth_date: "", role: "cliente", company_ids: [], is_master: false, is_professional: false,
+        birth_date: "", role: "profissional", company_ids: [], is_master: false, is_professional: true,
       };
     } catch {
       return {
         full_name: "", email: "", password: "", whatsapp: "", cpf: "", rg: "",
-        birth_date: "", role: "cliente", company_ids: [], is_master: false, is_professional: false,
+        birth_date: "", role: "profissional", company_ids: [], is_master: false, is_professional: true,
       };
     }
   });
@@ -389,7 +389,7 @@ export default function Settings() {
       }
       setShowUserModal(false);
       setEditingUser(null);
-      setUserFormData({ full_name: "", email: "", password: "", whatsapp: "", cpf: "", rg: "", birth_date: "", role: "cliente", company_ids: [], is_master: false, is_professional: false });
+      setUserFormData({ full_name: "", email: "", password: "", whatsapp: "", cpf: "", rg: "", birth_date: "", role: "profissional", company_ids: [], is_master: false, is_professional: true });
       localStorage.removeItem("form_draft_user");
       localStorage.removeItem("form_draft_user_open");
     },
@@ -496,10 +496,10 @@ export default function Settings() {
       setEditingUser(null);
       setUserFormData({
         full_name: "", email: "", password: "", whatsapp: "", cpf: "", rg: "", birth_date: "",
-        role: "cliente",
+        role: "profissional",
         company_ids: isSuperAdmin ? [] : currentUserCompanyIds.length ? [currentUserCompanyIds[0]] : [],
         is_master: false,
-        is_professional: false,
+        is_professional: true,
       });
     }
     setShowUserModal(true);
@@ -530,7 +530,7 @@ export default function Settings() {
       toast.info("Nenhuma alteração efetuada");
       setShowUserModal(false);
       setEditingUser(null);
-      setUserFormData({ full_name: "", email: "", password: "", whatsapp: "", cpf: "", rg: "", birth_date: "", role: "cliente", company_ids: [], is_master: false, is_professional: false });
+      setUserFormData({ full_name: "", email: "", password: "", whatsapp: "", cpf: "", rg: "", birth_date: "", role: "profissional", company_ids: [], is_master: false, is_professional: true });
       localStorage.removeItem("form_draft_user");
       localStorage.removeItem("form_draft_user_open");
       return;
@@ -1406,17 +1406,14 @@ export default function Settings() {
                           { value: "super_admin", label: "Super Admin", color: "purple" },
                           { value: "admin", label: "Admin", color: "amber" },
                           { value: "profissional", label: "Profissional", color: "blue" },
-                          { value: "cliente", label: "Cliente", color: "gray" },
                         ]
                       : isAdmin
                         ? [
                             { value: "admin", label: "Admin", color: "amber" },
                             { value: "profissional", label: "Profissional", color: "blue" },
-                            { value: "cliente", label: "Cliente", color: "gray" },
                           ]
                         : [
                             { value: "profissional", label: "Profissional", color: "blue" },
-                            { value: "cliente", label: "Cliente", color: "gray" },
                           ]
                     ).map(({ value, label, color }) => (
                       <button
