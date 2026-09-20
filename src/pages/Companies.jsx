@@ -23,6 +23,7 @@ function CopyIdButton({ id }) {
   );
 }
 import { db } from "@/api/dbClient";
+import { supabase } from "@/lib/supabaseClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Building2, Plus, Edit, Trash2, MoreVertical, GitBranch, Copy, Check, LayoutGrid, List, MessageCircle, Power, PowerOff, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -135,20 +136,41 @@ export default function Companies() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => db.entities.Company.create(data),
+    mutationFn: async (data) => {
+      const { responsible_admin_id, ...companyData } = data;
+      const result = await db.entities.Company.create(companyData);
+      if (responsible_admin_id && result?.id) {
+        try {
+          await supabase.from("user_companies").upsert({ user_id: responsible_admin_id, company_id: result.id }, { onConflict: "user_id,company_id" });
+          await supabase.from("users").update({ company_id: result.id }).eq("id", responsible_admin_id);
+        } catch (e) { console.warn("Falha ao vincular responsável:", e); }
+      }
+      return { ...result, responsible_admin_id };
+    },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin_users_for_company"] });
       if (result?.id) queryClient.invalidateQueries({ queryKey: ["userCompany", result.id] });
-      toast.success("Empresa criada!");
+      toast.success("Empresa criada!" + (result?.responsible_admin_id ? " Responsável vinculado." : ""));
       closeModal();
     },
     onError: (err) => toast.error("Erro ao criar empresa: " + (err?.message || "verifique os dados")),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => db.entities.Company.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const { responsible_admin_id, ...companyData } = data;
+      const result = await db.entities.Company.update(id, companyData);
+      if (responsible_admin_id) {
+        try {
+          await supabase.from("user_companies").upsert({ user_id: responsible_admin_id, company_id: id }, { onConflict: "user_id,company_id" });
+        } catch (e) { console.warn("Falha ao vincular responsável:", e); }
+      }
+      return { ...result, responsible_admin_id };
+    },
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin_users_for_company"] });
       queryClient.invalidateQueries({ queryKey: ["userCompany", variables.id] });
       toast.success("Empresa atualizada!");
       closeModal();
@@ -258,6 +280,8 @@ export default function Companies() {
       return out;
     };
     const payload = sanitize(form);
+    // Preserva vínculo de responsável para user_companies (não é coluna de companies)
+    if (form.responsible_admin_id) payload.responsible_admin_id = form.responsible_admin_id;
     if (editing) updateMutation.mutate({ id: editing.id, data: payload });
     else createMutation.mutate(payload);
   };

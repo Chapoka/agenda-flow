@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Loader2, Building2, MapPin, Phone, User, MessageCircle, Image } from "lucide-react";
 import { toast } from "sonner";
 import { formatPhone, formatCPF, formatCNPJ } from "@/utils/formatters";
+import { supabase } from "@/lib/supabaseClient";
 
 const emptyForm = {
   name: "", cnpj: "", cpf_document: "", tipo: "", estabelecimento_tipo: "", razao_social: "", situacao_cadastral: "",
@@ -84,10 +86,45 @@ export default function CompanyFormModal({ editing, form, setForm, onClose, onSa
     ? establishmentTypesData.map(t => ({ slug: t.slug, name: t.name }))
     : Object.entries(FALLBACK_ESTABLISHMENT_TYPES).map(([slug, name]) => ({ slug, name }));
 
+  const { data: adminUsers = [] } = useQuery({
+    queryKey: ["admin_users_for_company"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("users").select("id, full_name, email, cpf, whatsapp, phone, role").in("role", ["admin","super_admin"]).eq("active", true);
+      if (error) return [];
+      return data || [];
+    },
+  });
+
+  function AdminResponsibleSelect({ value, onChange }) {
+    return (
+      <Select value={value || "__none__"} onValueChange={(v) => onChange(v === "__none__" ? "" : v)}>
+        <SelectTrigger className="rounded-xl">
+          <SelectValue placeholder="Selecione um admin (opcional)" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none__">Nenhum (cadastro manual)</SelectItem>
+          {adminUsers.map(u => (
+            <SelectItem key={u.id} value={u.id}>{u.full_name || u.email} — {u.role === "super_admin" ? "Super Admin" : "Admin"} {u.email ? `(${u.email})` : ""}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
   useEffect(() => {
     if (editing) {
       setDocType(getInitialDocType());
       setDocValue(editing.cpf_document || editing.cnpj || "");
+      // Busca responsável atual (primeiro admin vinculado)
+      if (editing.id) {
+        supabase.from("user_companies").select("user_id").eq("company_id", editing.id).limit(1).then(({ data }) => {
+          if (data?.[0]?.user_id) {
+            setForm(prev => ({ ...prev, responsible_admin_id: data[0].user_id }));
+          }
+        });
+      }
+    } else {
+      setForm(prev => ({ ...prev, responsible_admin_id: "" }));
     }
   }, [editing?.id]);
 
@@ -454,6 +491,33 @@ export default function CompanyFormModal({ editing, form, setForm, onClose, onSa
           <h4 className="text-sm font-semibold text-on-surface flex items-center gap-2">
             <User className="w-4 h-4" /> Responsável
           </h4>
+          {/* Seletor de admin existente */}
+          <div className="space-y-1">
+            <Label>Vincular Admin Existente (opcional)</Label>
+            <AdminResponsibleSelect
+              value={form.responsible_admin_id || ""}
+              onChange={(adminId) => {
+                if (!adminId) {
+                  setForm(prev => ({ ...prev, responsible_admin_id: "", owner_name: "", owner_email: "", owner_phone: "", owner_cpf: "" }));
+                  return;
+                }
+                const admin = adminUsers.find(u => u.id === adminId);
+                if (admin) {
+                  setForm(prev => ({
+                    ...prev,
+                    responsible_admin_id: adminId,
+                    owner_name: admin.full_name || prev.owner_name,
+                    owner_email: admin.email || prev.owner_email,
+                    owner_phone: admin.whatsapp || admin.phone || prev.owner_phone,
+                    owner_cpf: admin.cpf || prev.owner_cpf,
+                  }));
+                } else {
+                  setForm(prev => ({ ...prev, responsible_admin_id: adminId }));
+                }
+              }}
+            />
+            <p className="text-[11px] text-muted-foreground">Selecione um admin para preencher automaticamente ou deixe em branco para cadastro manual</p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1 col-span-2">
               <Label>Nome do Responsável</Label>
