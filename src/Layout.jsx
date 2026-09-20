@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   LayoutDashboard,
@@ -48,6 +48,8 @@ const allNavItems = [
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
   // Fetch current user
   const { data: currentUser, isLoading: userLoading } = useQuery({
@@ -107,7 +109,7 @@ export default function Layout({ children, currentPageName }) {
 
   const theme = useThemeMode();
   const toggleTheme = useToggleTheme();
-  const loading = userLoading || (userCompanyId && companyLoading) || (isSuperAdmin && !userCompanyId && firstCompanyLoading);
+  const loading = userLoading || (userCompanyId && companyLoading);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -293,7 +295,6 @@ export default function Layout({ children, currentPageName }) {
                 <Link
                   key={item.page}
                   to={createPageUrl(item.page)}
-                  onClick={() => setSidebarOpen(false)}
                   className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm relative group"
                   style={isActive ? {
                     background: theme.sidebarActive,
