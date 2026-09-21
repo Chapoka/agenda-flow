@@ -197,7 +197,6 @@ export default function Settings() {
       ? users.filter(u => {
           const uRole = u.role === "teacher" ? "profissional" : u.role === "user" ? "cliente" : u.role;
           const uIds = u.company_ids?.length ? u.company_ids : (u.company_id ? [u.company_id] : []);
-          if (u.id === currentUser?.id) return false;
           return ["admin","profissional"].includes(uRole) && currentUserCompanyIds.some(cid => uIds.includes(cid));
         })
       : [];

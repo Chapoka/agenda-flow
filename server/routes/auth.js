@@ -163,8 +163,8 @@ router.post("/admin-update-user", async (req, res) => {
         .eq("id", user_id)
         .single();
       if (!target) return res.status(404).json({ error: "Usuário alvo não encontrado" });
-      if (target.role !== "admin" && target.role !== "super_admin") {
-        return res.status(403).json({ error: "Admin só pode alterar outros admins do mesma empresa" });
+      if (target.role !== "admin" && target.role !== "super_admin" && target.role !== "profissional") {
+        return res.status(403).json({ error: "Admin só pode alterar outros admins e profissionais da mesma empresa" });
       }
       // Checar mesma empresa via user_companies
       const { data: callerCompanies } = await req.supabase
