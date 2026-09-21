@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, Save, AlertTriangle } from "lucide-react";
+import { Clock, Save, AlertTriangle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -80,6 +80,28 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
   };
 
   const targetCompanyId = company?.id || selectedCompanyId;
+
+  const handleClear = async () => {
+    const targets = isSuperAdmin && selectedCompanyId === "all"
+      ? companies
+      : (company ? [company] : (selectedCompanyId ? companies.filter(c => c.id === selectedCompanyId) : []));
+    // Para admin, companies já está filtrado para só suas empresas em Schedule.jsx:885, então "Todas" são só suas
+    const effectiveTargets = targets.length ? targets : (companies.length ? [companies[0]] : []);
+    if (!effectiveTargets.length) {
+      toast.error("Selecione uma empresa");
+      return;
+    }
+    setSaving(true);
+    try {
+      await Promise.all(effectiveTargets.map(c => onSave({ opening_time: null, closing_time: null, open_days: [] }, c.id)));
+      toast.success(`Horário limpo para ${effectiveTargets.length} empresa(s)`);
+      onClose();
+    } catch (err) {
+      toast.error("Erro ao limpar: " + (err.message || "desconhecido"));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!targetCompanyId) {
@@ -210,18 +232,29 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
             Cancelar
           </Button>
           {!noCompany && (
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 rounded-xl btn-branding"
-            >
-              {saving ? "Salvando..." : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar
-                </>
-              )}
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                onClick={handleClear}
+                disabled={saving}
+                className="flex-1 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Limpar horário
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 rounded-xl btn-branding"
+              >
+                {saving ? "Salvando..." : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Salvar
+                  </>
+                )}
+              </Button>
+            </>
           )}
         </div>
       </DialogContent>
