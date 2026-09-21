@@ -59,7 +59,7 @@ export default function Login() {
           .from("users")
           .select("must_change_password")
           .eq("id", data.user.id)
-          .single();
+          .maybeSingle();
 
         if (userProfile?.must_change_password) {
           window.location.href = "/set-password";

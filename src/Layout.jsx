@@ -57,7 +57,7 @@ export default function Layout({ children, currentPageName }) {
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return null;
-      const { data } = await supabase.from("users").select("*, user_companies(company_id)").eq("id", session.user.id).single();
+      const { data } = await supabase.from("users").select("*, user_companies(company_id)").eq("id", session.user.id).maybeSingle();
       if (!data) return session.user;
       return {
         ...data,

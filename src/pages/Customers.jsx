@@ -132,7 +132,9 @@ export default function Customers() {
       const shouldFilter = userCompanyIds.length > 0 && !isSuperAdmin;
       const filtered = shouldFilter
         ? data.filter(s => {
-            const rawIds = s.company_ids ?? s.companyIds ?? s.company_id ?? s.companyId;
+            const rawIds = (s.companyIds?.length > 0 ? s.companyIds : null) ??
+              (s.company_ids?.length > 0 ? s.company_ids : null) ??
+              s.company_id ?? s.companyId;
             const sIds = Array.isArray(rawIds) ? rawIds : (rawIds ? [rawIds] : []);
             return sIds.some(id => userCompanyIds.includes(id));
           })

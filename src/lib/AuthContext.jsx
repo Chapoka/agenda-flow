@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
         .from("users")
         .select("*, user_companies(company_id)")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (userData) {
         const normalizedUser = {

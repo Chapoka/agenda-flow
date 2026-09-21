@@ -566,7 +566,7 @@ export const db = {
         .from("users")
         .select("*, user_companies(company_id)")
         .eq("id", data.session.user.id)
-        .single();
+        .maybeSingle();
       if (!user) return data.session.user;
       return {
         ...user,
