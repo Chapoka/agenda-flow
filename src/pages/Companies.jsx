@@ -244,16 +244,29 @@ export default function Companies() {
         return toast.error(`O campo "${field.label}" precisa ser preenchido`);
       }
     }
-    // CNPJ/CPF duplicado
+    // CNPJ/CPF duplicado — skip if value hasn't changed from original
     const cleanCnpj = form.cnpj ? String(form.cnpj).replace(/\D/g, "") : "";
     const cleanCpf = form.cpf_document ? String(form.cpf_document).replace(/\D/g, "") : "";
-    if (cleanCnpj) {
-      const dup = companies.find(c => c.cnpj && String(c.cnpj).replace(/\D/g, "") === cleanCnpj && c.id !== editing?.id);
-      if (dup) return toast.error(`CNPJ já cadastrado em "${dup.name}"`);
-    }
-    if (cleanCpf) {
-      const dup = companies.find(c => c.cpf_document && String(c.cpf_document).replace(/\D/g, "") === cleanCpf && c.id !== editing?.id);
-      if (dup) return toast.error(`CPF já cadastrado em "${dup.name}"`);
+    if (editing) {
+      const origCnpj = editing.cnpj ? String(editing.cnpj).replace(/\D/g, "") : "";
+      const origCpf = editing.cpf_document ? String(editing.cpf_document).replace(/\D/g, "") : "";
+      if (cleanCnpj && cleanCnpj !== origCnpj) {
+        const dup = companies.find(c => c.cnpj && String(c.cnpj).replace(/\D/g, "") === cleanCnpj && c.id !== editing.id);
+        if (dup) return toast.error(`CNPJ já cadastrado em "${dup.name}"`);
+      }
+      if (cleanCpf && cleanCpf !== origCpf) {
+        const dup = companies.find(c => c.cpf_document && String(c.cpf_document).replace(/\D/g, "") === cleanCpf && c.id !== editing.id);
+        if (dup) return toast.error(`CPF já cadastrado em "${dup.name}"`);
+      }
+    } else {
+      if (cleanCnpj) {
+        const dup = companies.find(c => c.cnpj && String(c.cnpj).replace(/\D/g, "") === cleanCnpj);
+        if (dup) return toast.error(`CNPJ já cadastrado em "${dup.name}"`);
+      }
+      if (cleanCpf) {
+        const dup = companies.find(c => c.cpf_document && String(c.cpf_document).replace(/\D/g, "") === cleanCpf);
+        if (dup) return toast.error(`CPF já cadastrado em "${dup.name}"`);
+      }
     }
     // Sanitize data: convert formatted strings to proper types
     const COMPANY_COLUMNS = [
