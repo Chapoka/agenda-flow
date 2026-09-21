@@ -496,7 +496,7 @@ export default function CompanyFormModal({ editing, form, setForm, onClose, onSa
             <Label>Vincular Admin Existente (opcional)</Label>
             <AdminResponsibleSelect
               value={form.responsible_admin_id || ""}
-              onChange={(adminId) => {
+              onChange={async (adminId) => {
                 if (!adminId) {
                   setForm(prev => ({ ...prev, responsible_admin_id: "", owner_name: "", owner_email: "", owner_phone: "", owner_cpf: "" }));
                   return;
@@ -512,7 +512,25 @@ export default function CompanyFormModal({ editing, form, setForm, onClose, onSa
                     owner_cpf: admin.cpf || prev.owner_cpf,
                   }));
                 } else {
-                  setForm(prev => ({ ...prev, responsible_admin_id: adminId }));
+                  try {
+                    const { data: userData } = await supabase
+                      .from("users").select("full_name, email, cpf, whatsapp, phone")
+                      .eq("id", adminId).single();
+                    if (userData) {
+                      setForm(prev => ({
+                        ...prev,
+                        responsible_admin_id: adminId,
+                        owner_name: userData.full_name || prev.owner_name,
+                        owner_email: userData.email || prev.owner_email,
+                        owner_phone: userData.whatsapp || userData.phone || prev.owner_phone,
+                        owner_cpf: userData.cpf || prev.owner_cpf,
+                      }));
+                    } else {
+                      setForm(prev => ({ ...prev, responsible_admin_id: adminId }));
+                    }
+                  } catch {
+                    setForm(prev => ({ ...prev, responsible_admin_id: adminId }));
+                  }
                 }
               }}
             />
