@@ -647,26 +647,44 @@ logger.info("Guardian created via mini-form", guardian);
                 Empresa
               </Label>
               <div className="px-3 py-2 rounded-xl border border-outline-variant bg-muted/30 text-on-surface text-sm">
-                {companies.find((c) => c.id === teacherCompanyId)?.name || teacherCompanyId || "—"}
+                {companies.find((c) => c.id === teacherCompanyId)?.name || "—"}
               </div>
             </div>
-          ) : !isSuperAdmin ? (
-            (() => {
-              const assignedId = formData.company_ids?.[0] || customer?.company_id || customer?.companyId || companies[0]?.id || teacherCompanyId;
-              const assignedName = companies.find((c) => c.id === assignedId)?.name || assignedId || "—";
-              return (
-                <div className="md:col-span-2 space-y-2">
-                  <Label className="text-sm font-medium text-on-surface flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-muted-foreground" />
-                    Empresa
-                  </Label>
-                  <div className="px-3 py-2 rounded-xl border border-outline-variant bg-muted/30 text-on-surface text-sm">
-                    {assignedName}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Cliente vinculado automaticamente à sua empresa — somente super admin pode alterar para outras empresas</p>
-                </div>
-              );
-            })()
+          ) : !isSuperAdmin && companies.length === 1 ? (
+            null
+          ) : !isSuperAdmin && companies.length > 1 ? (
+            <div className="md:col-span-2 space-y-2">
+              <Label className="text-sm font-medium text-on-surface flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                Empresas (filiais)
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {companies.map(c => {
+                  const selected = formData.company_ids?.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        const current = formData.company_ids || [];
+                        const next = selected
+                          ? current.filter(id => id !== c.id)
+                          : [...current, c.id];
+                        handleChange("company_ids", next);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                        selected
+                          ? "bg-branding-primary text-white border-branding-primary"
+                          : "bg-gray-200 text-gray-600 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">Selecione as empresas onde o cliente poderá ser atendido</p>
+            </div>
           ) : (
             <div className="md:col-span-2 space-y-2">
               <Label className="text-sm font-medium text-on-surface flex items-center gap-2">

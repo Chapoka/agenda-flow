@@ -140,7 +140,7 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-sm rounded-2xl">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:w-full sm:max-w-sm rounded-2xl p-4 sm:p-6 overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-branding-primary" />
@@ -175,13 +175,13 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
 
             <div className="space-y-2">
               <Label className="text-sm font-medium text-on-surface">Dias de Funcionamento</Label>
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex gap-1 sm:gap-1.5 flex-wrap">
                 {DAYS_OF_WEEK.map(day => (
                   <button
                     key={day.key}
                     type="button"
                     onClick={() => toggleDay(day.key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-medium transition-all ${
                       openDays.includes(day.key)
                         ? "bg-branding-primary text-white"
                         : "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
@@ -195,9 +195,9 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
 
             <div className="space-y-2">
               <Label className="text-sm font-medium text-on-surface">Abertura</Label>
-              <Select value={openingTime} onValueChange={setOpeningTime}>
+              <Select value={openingTime || undefined} onValueChange={setOpeningTime}>
                 <SelectTrigger className="rounded-xl">
-                  <SelectValue />
+                  <SelectValue placeholder="Selecionar horário..." />
                 </SelectTrigger>
                 <SelectContent>
                   {timeOptions.map((t) => (
@@ -209,9 +209,9 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
 
             <div className="space-y-2">
               <Label className="text-sm font-medium text-on-surface">Fechamento</Label>
-              <Select value={closingTime} onValueChange={setClosingTime}>
+              <Select value={closingTime || undefined} onValueChange={setClosingTime}>
                 <SelectTrigger className="rounded-xl">
-                  <SelectValue />
+                  <SelectValue placeholder="Selecionar horário..." />
                 </SelectTrigger>
                 <SelectContent>
                   {timeOptions.map((t) => (
@@ -241,7 +241,7 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
           </div>
         )}
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
           <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl">
             Cancelar
           </Button>
@@ -254,7 +254,7 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
                 className="flex-1 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Limpar horário
+                Limpar
               </Button>
               <Button
                 onClick={handleSave}

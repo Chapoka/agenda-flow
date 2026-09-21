@@ -879,7 +879,7 @@ function SalonDashboard({ currentUser, isProfissional, companyId }) {
                 className="btn-branding py-3 px-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors"
               >
                 <span className="material-symbols-outlined">add_circle</span>
-                Novo
+                Agendamento
               </button>
               <button
                 onClick={() => navigate(createPageUrl("Clientes"), { state: { openNew: true } })}
