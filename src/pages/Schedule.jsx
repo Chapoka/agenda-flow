@@ -641,12 +641,12 @@ export default function Schedule() {
           <div className="flex items-center gap-2 flex-wrap">
             {isSuperAdmin && companies.length > 0 && (
               <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger className="w-36 sm:w-48 rounded-xl border-outline-variant/30">
+                <SelectTrigger className="w-28 sm:w-36 rounded-xl border-outline-variant/30">
                   <Building2 className="w-4 h-4 mr-2 text-on-surface-variant flex-shrink-0" />
                   <SelectValue placeholder="Empresas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as empresas</SelectItem>
+                  <SelectItem value="all">Empresas</SelectItem>
                   {companies.map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
@@ -654,12 +654,12 @@ export default function Schedule() {
               </Select>
             )}
             <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-              <SelectTrigger className="w-36 sm:w-48 rounded-xl border-outline-variant/30">
+              <SelectTrigger className="w-28 sm:w-36 rounded-xl border-outline-variant/30">
                 <Users className="w-4 h-4 mr-2 text-on-surface-variant flex-shrink-0" />
                 <SelectValue placeholder="Clientes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os clientes</SelectItem>
+                <SelectItem value="all">Clientes</SelectItem>
                 {customers.map(s => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
@@ -667,12 +667,12 @@ export default function Schedule() {
             </Select>
             {(isAdmin || isSuperAdmin) && (
               <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
-                <SelectTrigger className="w-36 sm:w-48 rounded-xl border-outline-variant/30">
+                <SelectTrigger className="w-28 sm:w-36 rounded-xl border-outline-variant/30">
                   <UserCog className="w-4 h-4 mr-2 text-on-surface-variant flex-shrink-0" />
                   <SelectValue placeholder="Profissionais" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os profissionais</SelectItem>
+                  <SelectItem value="all">Profissionais</SelectItem>
                   {professionals.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.full_name || p.email}</SelectItem>
                   ))}
