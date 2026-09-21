@@ -172,7 +172,11 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
-  const navItems = allNavItems.filter(item => item.roles.includes(role));
+  const navItems = allNavItems.filter(item => {
+    if (!item.roles.includes(role)) return false;
+    if (item.page === "Companies" && !isSuperAdmin && userCompanyIds.length <= 1) return false;
+    return true;
+  });
   const roleLabel = role === "super_admin" ? "Super Admin" : role === "admin" ? "Administrador" : "Profissional";
 
   const roleBadgeStyle = theme.isDark
