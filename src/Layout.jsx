@@ -79,15 +79,9 @@ export default function Layout({ children, currentPageName }) {
     staleTime: 0,
   });
 
-  // Super admin sem empresa vinculada: buscar primeira empresa disponível
-  const { data: firstCompany, isLoading: firstCompanyLoading } = useQuery({
-    queryKey: ["firstCompany"],
-    queryFn: () => db.entities.Company.list("-created_at", 1).then(c => c?.[0] || null),
-    enabled: isSuperAdmin && !userCompanyId,
-    staleTime: 0,
-  });
+  // Super admin sem empresa vinculada: busca automática removida — usa branding padrão
 
-  const effectiveCompany = userCompany || firstCompany;
+  const effectiveCompany = userCompany;
 
   // Compute branding from company or defaults
   const defaultBranding = useMemo(() => ({
