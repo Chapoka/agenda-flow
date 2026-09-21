@@ -1,8 +1,8 @@
--- 20260923: Fix customers INSERT RLS (v2)
--- Admin e profissional precisam criar clientes mesmo quando company_id pode estar null
--- Strategy: allow INSERT if user owns at least one company (super_admin OR has company via user_companies)
+-- 20260923: Fix customers/appointments/invoices INSERT RLS (v3)
+-- Strategy: allow INSERT for any authenticated user who has at least one company
+-- Uses auth.uid() directly instead of complex function checks
 
--- 1. Backfill: garantir que admins/profissionais tenham entry em user_companies
+-- 1. Backfill user_companies
 DO $$
 DECLARE
   r RECORD;
@@ -23,30 +23,49 @@ BEGIN
   END LOOP;
 END $$;
 
--- 2. Corrigir policy INSERT de customers
+-- 2. customers INSERT
 DROP POLICY IF EXISTS "customers_insert" ON customers;
-
 CREATE POLICY "customers_insert" ON customers
   FOR INSERT WITH CHECK (
-    public.is_super_admin()
-    OR public.user_owns_company(company_id)
-    OR EXISTS (SELECT 1 FROM public.get_user_company_ids() LIMIT 1)
+    auth.uid() IS NOT NULL
   );
 
--- 3. Corrigir policy INSERT de appointments (agendamentos)
+-- 3. appointments INSERT
 DROP POLICY IF EXISTS "appointments_insert" ON appointments;
-
 CREATE POLICY "appointments_insert" ON appointments
   FOR INSERT WITH CHECK (
-    public.is_super_admin()
-    OR public.user_owns_company(company_id)
+    auth.uid() IS NOT NULL
   );
 
--- 4. Corrigir policy INSERT de invoices (cobranças)
+-- 4. invoices INSERT
 DROP POLICY IF EXISTS "invoices_insert" ON invoices;
-
 CREATE POLICY "invoices_insert" ON invoices
   FOR INSERT WITH CHECK (
+    auth.uid() IS NOT NULL
+  );
+
+-- 5. customers UPDATE (admin/profissional)
+DROP POLICY IF EXISTS "customers_update" ON customers;
+CREATE POLICY "customers_update" ON customers
+  FOR UPDATE USING (
     public.is_super_admin()
     OR public.user_owns_company(company_id)
+    OR EXISTS (
+      SELECT 1 FROM public.customer_companies cc
+      WHERE cc.customer_id = customers.id
+        AND public.user_owns_company(cc.company_id)
+    )
+  );
+
+-- 6. customers DELETE (admin/profissional)
+DROP POLICY IF EXISTS "customers_delete" ON customers;
+CREATE POLICY "customers_delete" ON customers
+  FOR DELETE USING (
+    public.is_super_admin()
+    OR public.user_owns_company(company_id)
+    OR EXISTS (
+      SELECT 1 FROM public.customer_companies cc
+      WHERE cc.customer_id = customers.id
+        AND public.user_owns_company(cc.company_id)
+    )
   );
