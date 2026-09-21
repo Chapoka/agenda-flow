@@ -638,11 +638,11 @@ export default function Schedule() {
             <p className="text-on-surface-variant mt-1">Gerencie os agendamentos e atendimentos</p>
           </div>
           
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-nowrap overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
             {isSuperAdmin && companies.length > 0 && (
               <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger className="w-28 sm:w-36 rounded-xl border-outline-variant/30">
-                  <Building2 className="w-4 h-4 mr-2 text-on-surface-variant flex-shrink-0" />
+                <SelectTrigger className="w-28 sm:w-32 rounded-xl border-outline-variant/30 shrink-0">
+                  <Building2 className="w-4 h-4 mr-1.5 text-on-surface-variant flex-shrink-0" />
                   <SelectValue placeholder="Empresas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -654,8 +654,8 @@ export default function Schedule() {
               </Select>
             )}
             <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-              <SelectTrigger className="w-28 sm:w-36 rounded-xl border-outline-variant/30">
-                <Users className="w-4 h-4 mr-2 text-on-surface-variant flex-shrink-0" />
+              <SelectTrigger className="w-24 sm:w-28 rounded-xl border-outline-variant/30 shrink-0">
+                <Users className="w-4 h-4 mr-1.5 text-on-surface-variant flex-shrink-0" />
                 <SelectValue placeholder="Clientes" />
               </SelectTrigger>
               <SelectContent>
@@ -667,8 +667,8 @@ export default function Schedule() {
             </Select>
             {(isAdmin || isSuperAdmin) && (
               <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
-                <SelectTrigger className="w-28 sm:w-36 rounded-xl border-outline-variant/30">
-                  <UserCog className="w-4 h-4 mr-2 text-on-surface-variant flex-shrink-0" />
+                <SelectTrigger className="w-28 sm:w-32 rounded-xl border-outline-variant/30 shrink-0">
+                  <UserCog className="w-4 h-4 mr-1.5 text-on-surface-variant flex-shrink-0" />
                   <SelectValue placeholder="Profissionais" />
                 </SelectTrigger>
                 <SelectContent>
@@ -683,20 +683,20 @@ export default function Schedule() {
               <Button
                 variant="outline"
                 onClick={() => setShowBusinessHours(true)}
-                className="rounded-xl border-outline-variant/30"
+                className="rounded-xl border-outline-variant/30 shrink-0 px-3"
               >
-                <Clock className="w-4 h-4 mr-2" />
-                Horário
+                <Clock className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Horário</span>
               </Button>
             )}
             {(isAdmin || isSuperAdmin) && (
               <Button
                 variant="outline"
                 onClick={() => setShowBlockedTimes(true)}
-                className="rounded-xl border-outline-variant/30"
+                className="rounded-xl border-outline-variant/30 shrink-0 px-3"
               >
-                <Ban className="w-4 h-4 mr-2" />
-                Bloquear Horário
+                <Ban className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Bloquear Horário</span>
               </Button>
             )}
             <Button
@@ -705,10 +705,11 @@ export default function Schedule() {
                 setSelectedTime(null);
                 setShowNewAppointment(true);
               }}
-              className="btn-branding rounded-xl shadow-lg shadow-branding-primary/20"
+              className="btn-branding rounded-xl shadow-lg shadow-branding-primary/20 shrink-0 ml-auto"
             >
-              <Plus className="w-5 h-5 mr-2" />
-              Novo
+              <Plus className="w-5 h-5 sm:mr-2" />
+              <span className="hidden sm:inline">Novo</span>
+              <span className="sm:hidden">Novo</span>
             </Button>
           </div>
         </div>
