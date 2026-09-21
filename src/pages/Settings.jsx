@@ -1024,9 +1024,9 @@ export default function Settings() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteUser(user.id)}
-                            disabled={user.is_master && !isSuperAdmin}
-                            className={user.is_master && !isSuperAdmin ? "text-outline cursor-not-allowed h-8 w-8" : "text-on-surface-variant hover:text-red-400 h-8 w-8"}
-                            title={user.is_master && !isSuperAdmin ? "Somente Super Admin pode excluir o Master" : "Excluir"}
+                            disabled={!isSuperAdmin}
+                            className={!isSuperAdmin ? "text-outline cursor-not-allowed h-8 w-8" : "text-on-surface-variant hover:text-red-400 h-8 w-8"}
+                            title={!isSuperAdmin ? "Somente Super Admin pode excluir" : "Excluir"}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -1105,9 +1105,9 @@ export default function Settings() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDeleteUser(user.id)}
-                          disabled={user.is_master && !isSuperAdmin}
-                          className={user.is_master && !isSuperAdmin ? "text-outline cursor-not-allowed" : "text-on-surface-variant hover:text-red-400"}
-                          title={user.is_master && !isSuperAdmin ? "Somente Super Admin pode excluir o Master" : "Excluir"}
+                            disabled={!isSuperAdmin}
+                            className={!isSuperAdmin ? "text-outline cursor-not-allowed" : "text-on-surface-variant hover:text-red-400"}
+                            title={!isSuperAdmin ? "Somente Super Admin pode excluir" : "Excluir"}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

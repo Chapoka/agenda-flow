@@ -52,6 +52,18 @@ router.post("/admin-create-user", async (req, res) => {
       return res.status(403).json({ error: "Acesso negado" });
     }
 
+    // Admin só pode criar usuários para sua própria empresa
+    if (profile?.role === "admin" && company_id) {
+      const { data: callerCompanies } = await req.supabase
+        .from("user_companies")
+        .select("company_id")
+        .eq("user_id", callerId);
+      const callerCompanyIds = (callerCompanies || []).map(c => c.company_id);
+      if (!callerCompanyIds.includes(company_id)) {
+        return res.status(403).json({ error: "Acesso negado: não pode criar usuário para outra empresa" });
+      }
+    }
+
     let userId;
 
     const { data: userData, error: createError } = await req.supabase.auth.admin.createUser({
@@ -163,7 +175,7 @@ router.post("/admin-update-user", async (req, res) => {
         .eq("id", user_id)
         .single();
       if (!target) return res.status(404).json({ error: "Usuário alvo não encontrado" });
-      if (target.role !== "admin" && target.role !== "super_admin" && target.role !== "profissional") {
+      if (target.role !== "admin" && target.role !== "profissional") {
         return res.status(403).json({ error: "Admin só pode alterar outros admins e profissionais da mesma empresa" });
       }
       // Checar mesma empresa via user_companies
@@ -205,8 +217,8 @@ router.post("/admin-update-user", async (req, res) => {
     if (birth_date != null) updateData.birth_date = birth_date;
     if (role != null && isSuperAdmin) updateData.role = role; // só super_admin pode trocar role
     else if (role != null && isAdmin) {
-      // admin pode manter admin ou mudar para profissional/cliente se quiser? manter restrito: só pode manter admin
-      if (["admin", "profissional", "cliente"].includes(role)) updateData.role = role;
+      // admin pode manter admin ou mudar para profissional? manter restrito: só pode manter admin
+      if (["profissional", "cliente"].includes(role)) updateData.role = role;
     }
     if (is_master != null && isSuperAdmin) updateData.is_master = is_master;
     if (is_professional != null) updateData.is_professional = is_professional;
@@ -260,34 +272,14 @@ router.post("/admin-delete-user", async (req, res) => {
       .eq("id", callerId)
       .single();
 
-    if (profile?.role !== "super_admin" && profile?.role !== "admin") {
-      return res.status(403).json({ error: "Acesso negado" });
+    if (profile?.role !== "super_admin") {
+      return res.status(403).json({ error: "Apenas Super Admin pode excluir usuários" });
     }
 
     // Bloqueia exclusão de super_admin via app - só via SQL direto no Supabase (Studio > SQL Editor)
     const { data: targetProfile } = await req.supabase.from("users").select("role,email").eq("id", user_id).single();
     if (targetProfile?.role === "super_admin") {
       return res.status(403).json({ error: `super_admin "${targetProfile.email}" não pode ser deletado via app. Use Supabase Studio > SQL Editor (como postgres): DELETE FROM auth.users WHERE id = '${user_id}';` });
-    }
-
-    // Admin só pode excluir profissionais vinculados à sua empresa
-    if (profile?.role === "admin") {
-      const { data: callerCompanies } = await req.supabase
-        .from("user_companies")
-        .select("company_id")
-        .eq("user_id", callerId);
-
-      const { data: targetCompanies } = await req.supabase
-        .from("user_companies")
-        .select("company_id")
-        .eq("user_id", user_id);
-
-      const callerCompanyIds = (callerCompanies || []).map(c => c.company_id);
-      const targetCompanyIds = (targetCompanies || []).map(c => c.company_id);
-      const hasAccess = targetCompanyIds.some(id => callerCompanyIds.includes(id));
-      if (targetCompanyIds.length > 0 && !hasAccess) {
-        return res.status(403).json({ error: "Acesso negado: usuário não pertence à sua empresa" });
-      }
     }
 
     // Limpa referências FK em tabelas dependentes (ordem importa)
