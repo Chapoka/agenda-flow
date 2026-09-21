@@ -219,12 +219,12 @@ export default function WeeklyCalendar({ appointments, customers = [], onAppoint
         </div>
       </div>
 
-      {/* Business Hours Legend - sempre visível para debug */}
+      {/* Business Hours Legend */}
       <div className="px-4 py-2 border-b border-outline-variant/10 flex items-center gap-4 text-xs text-on-surface-variant flex-wrap">
         {openingTime && closingTime ? (
           <span className="font-medium text-on-surface">Horário: {openingTime} - {closingTime}</span>
         ) : (
-          <span className="font-medium text-amber-400">Horário não configurado (usando 08:00-18:00)</span>
+          <span className="font-medium text-amber-400">Horário não configurado - defina em Horário</span>
         )}
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm border" style={{ backgroundColor: "rgba(220,38,38,0.28)", borderColor: "rgba(220,38,38,0.45)" }}></span>

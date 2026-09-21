@@ -173,7 +173,7 @@ export default function DayCalendar({ appointments, customers = [], onAppointmen
             {!dayIsOpen && <span className="font-medium text-red-400">Fechado neste dia</span>}
           </>
         ) : (
-          <span className="font-medium text-amber-400">Horário não configurado (usando 08:00-18:00)</span>
+          <span className="font-medium text-amber-400">Horário não configurado - defina em Horário</span>
         )}
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm border" style={{ backgroundColor: "rgba(220,38,38,0.28)", borderColor: "rgba(220,38,38,0.45)" }}></span>

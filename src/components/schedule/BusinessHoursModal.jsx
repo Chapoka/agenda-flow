@@ -40,25 +40,25 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
   useEffect(() => {
     if (open) {
       if (company) {
-        setOpeningTime(company.opening_time || "08:00");
-        setClosingTime(company.closing_time || "18:00");
-        setOpenDays(company.open_days?.length ? company.open_days : ["seg", "ter", "qua", "qui", "sex", "sab"]);
+        setOpeningTime(company.opening_time || "");
+        setClosingTime(company.closing_time || "");
+        setOpenDays(company.open_days || []);
         setSelectedCompanyId(company.id);
       } else if (companies.length === 1) {
         setSelectedCompanyId(companies[0].id);
-        setOpeningTime(companies[0].opening_time || "08:00");
-        setClosingTime(companies[0].closing_time || "18:00");
-        setOpenDays(companies[0].open_days?.length ? companies[0].open_days : ["seg", "ter", "qua", "qui", "sex", "sab"]);
+        setOpeningTime(companies[0].opening_time || "");
+        setClosingTime(companies[0].closing_time || "");
+        setOpenDays(companies[0].open_days || []);
       } else if (companyId && companies.find(c => c.id === companyId)) {
         const c = companies.find(co => co.id === companyId);
         setSelectedCompanyId(companyId);
-        setOpeningTime(c?.opening_time || "08:00");
-        setClosingTime(c?.closing_time || "18:00");
-        setOpenDays(c?.open_days?.length ? c.open_days : ["seg", "ter", "qua", "qui", "sex", "sab"]);
+        setOpeningTime(c?.opening_time || "");
+        setClosingTime(c?.closing_time || "");
+        setOpenDays(c?.open_days || []);
       } else {
-        setOpeningTime("08:00");
-        setClosingTime("18:00");
-        setOpenDays(["seg", "ter", "qua", "qui", "sex", "sab"]);
+        setOpeningTime("");
+        setClosingTime("");
+        setOpenDays([]);
       }
     }
   }, [open, company, companyId, companies]);
@@ -67,9 +67,13 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
     setSelectedCompanyId(id);
     const c = companies.find(co => co.id === id);
     if (c) {
-      setOpeningTime(c.opening_time || "08:00");
-      setClosingTime(c.closing_time || "18:00");
-      setOpenDays(c.open_days?.length ? c.open_days : ["seg", "ter", "qua", "qui", "sex", "sab"]);
+      setOpeningTime(c.opening_time || "");
+      setClosingTime(c.closing_time || "");
+      setOpenDays(c.open_days || []);
+    } else {
+      setOpeningTime("");
+      setClosingTime("");
+      setOpenDays([]);
     }
   };
 
@@ -106,6 +110,10 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
   const handleSave = async () => {
     if (!targetCompanyId) {
       toast.error("Selecione uma empresa primeiro");
+      return;
+    }
+    if (!openingTime || !closingTime) {
+      toast.error("Selecione abertura e fechamento");
       return;
     }
     if (openingTime >= closingTime) {
@@ -216,11 +224,17 @@ export default function BusinessHoursModal({ open, onClose, company, companies =
             <div className="p-3 rounded-xl bg-branding-primary/5 border border-branding-primary/20 text-sm text-branding-primary flex items-center gap-2">
               <Clock className="w-4 h-4 flex-shrink-0" />
               <span>
-                Horário: <strong>{openingTime} - {closingTime}</strong>
-                {openDays.length < 7 && (
-                  <span className="block text-xs mt-0.5 opacity-70">
-                    {openDays.map(d => DAYS_OF_WEEK.find(day => day.key === d)?.full).filter(Boolean).join(", ")}
-                  </span>
+                {openingTime && closingTime ? (
+                  <>
+                    Horário: <strong>{openingTime} - {closingTime}</strong>
+                    {openDays.length > 0 && openDays.length < 7 && (
+                      <span className="block text-xs mt-0.5 opacity-70">
+                        {openDays.map(d => DAYS_OF_WEEK.find(day => day.key === d)?.full).filter(Boolean).join(", ")}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="opacity-70">Nenhum horário configurado</span>
                 )}
               </span>
             </div>
