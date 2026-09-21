@@ -708,7 +708,7 @@ export default function Schedule() {
               className="btn-branding rounded-xl shadow-lg shadow-branding-primary/20"
             >
               <Plus className="w-5 h-5 mr-2" />
-              Novo Agendamento
+              Novo
             </Button>
           </div>
         </div>
