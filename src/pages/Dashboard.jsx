@@ -140,7 +140,7 @@ function SuperAdminDashboard({ currentUser }) {
 
   const companyStats = companies.filter(c => c.active !== false).map(company => {
     const junctionIds = companyToCustomerIds[company.id] || new Set();
-    const coCustomers = customers.filter(s => junctionIds.has(s.id) || s.company_id === company.id);
+    const coCustomers = customers.filter(s => junctionIds.has(s.id) || s.companyId === company.id || s.company_id === company.id);
     const coCustomerIds = new Set(coCustomers.map(s => s.id));
     const coInvoices = allInvoices.filter(inv => coCustomerIds.has(inv.customer_id));
     const coRevenue = coInvoices

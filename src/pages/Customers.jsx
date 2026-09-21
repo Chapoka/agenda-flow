@@ -401,6 +401,7 @@ export default function Customers() {
         billing_mode: data.billing_mode || "individual",
         portal_enabled: data.portal_enabled ?? true,
         company_id: companyId,
+        company_ids: allCompanyIds,
         medical_certificate_url: data.medical_certificate_url || null,
       };
       logger.info("Final payload to send", finalData);
