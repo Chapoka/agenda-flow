@@ -78,13 +78,24 @@ router.post("/admin-create-user", async (req, res) => {
     });
 
     if (createError) {
-      // Se o e-mail já está registrado, busca o usuário existente
-      if (createError.message?.includes("already registered")) {
+      // Se o e-mail já está registrado, retorna 409 com link para o usuário existente
+      const msgLower = (createError.message || "").toLowerCase();
+      const isAlreadyRegistered = msgLower.includes("already") && msgLower.includes("registered");
+      if (isAlreadyRegistered) {
         const { data: existingUsers, error: listErr } = await req.supabase.auth.admin.listUsers();
         if (listErr) throw listErr;
-        const existing = (existingUsers?.users || []).find(u => u.email === email);
+        const existing = (existingUsers?.users || []).find(u => u.email.toLowerCase() === email.toLowerCase());
         if (!existing) throw createError;
-        userId = existing.id;
+        // Busca dados do usuário existente para link
+        const { data: existingProfile } = await req.supabase.from("users").select("id, full_name, email, role").eq("id", existing.id).maybeSingle();
+        return res.status(409).json({
+          error: "Este e-mail já está cadastrado como usuário",
+          code: "USER_ALREADY_EXISTS",
+          existing_user_id: existing.id,
+          existing_user_email: existing.email,
+          existing_user_name: existingProfile?.full_name || existing.email,
+          existing_user_role: existingProfile?.role || "cliente",
+        });
       } else {
         throw createError;
       }

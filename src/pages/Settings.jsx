@@ -388,7 +388,13 @@ export default function Settings() {
           }),
         }, freshToken2);
         const result = await res.json();
-        if (!res.ok) throw new Error(result.error || "Erro ao criar usuário");
+        if (!res.ok) {
+          // Preserva dados do usuário existente para mostrar link (409)
+          if (result.code === "USER_ALREADY_EXISTS") {
+            throw new Error(JSON.stringify(result));
+          }
+          throw new Error(result.error || "Erro ao criar usuário");
+        }
 
         // Vínculo user_companies agora é feito pelo servidor via service_role (evita 403 RLS para admin)
         // Mantém apenas is_professional como fallback silencioso (pode falhar para admin sem RLS, mas servidor já criou o usuário)
@@ -426,7 +432,43 @@ export default function Settings() {
     },
     onError: (error) => {
       console.error("saveUserMutation error:", error);
+      const raw = error?.message || "";
+      // 409 com dados do usuário existente (via server) - mostra modal com link direto, sem precisar buscar via RLS
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed.code === "USER_ALREADY_EXISTS" && parsed.existing_user_id) {
+          const existingFromServer = {
+            id: parsed.existing_user_id,
+            full_name: parsed.existing_user_name || "",
+            email: parsed.existing_user_email || userFormData.email,
+            role: parsed.existing_user_role || "cliente",
+          };
+          setExistingUserFound(existingFromServer);
+          setShowUserModal(false);
+          setShowExistingUserModal(true);
+          return;
+        }
+      } catch {}
       let msg = error?.message || error?.error?.message || "Erro ao salvar usuário";
+      if (msg.includes("USER_ALREADY_EXISTS") || msg.includes("já está cadastrado como usuário")) {
+        // Fallback: tenta usar dados do erro se já for JSON com existing_user
+        try {
+          const parsed2 = JSON.parse(msg);
+          if (parsed2.existing_user_id) {
+            setExistingUserFound({
+              id: parsed2.existing_user_id,
+              full_name: parsed2.existing_user_name || "",
+              email: parsed2.existing_user_email || userFormData.email,
+              role: parsed2.existing_user_role || "cliente",
+            });
+            setShowUserModal(false);
+            setShowExistingUserModal(true);
+            return;
+          }
+        } catch {}
+        toast.error("Este e-mail já está cadastrado como usuário. Tente editar o usuário existente.");
+        return;
+      }
       if (msg.includes("Sessão expirada - faça login novamente")) {
         toast.error("Sua sessão expirou após troca de senha. Faça login novamente.");
         setTimeout(()=> { window.location.href = "/login"; }, 1500);
@@ -441,7 +483,8 @@ export default function Settings() {
           if(!data?.session) window.location.href = "/login";
         }).catch(()=>{ window.location.href = "/login"; });
       } else if (msg.includes("already been registered") || msg.includes("already registered")) {
-        msg = "Este e-mail já está registrado como usuário do sistema. Tente editar o usuário existente.";
+        msg = "Este e-mail já está registrado como usuário do sistema.";
+        // Já tratado acima com modal, mas fallback para toast
       }
       toast.error(msg);
     },
@@ -1385,6 +1428,7 @@ export default function Settings() {
                     type="email"
                     value={userFormData.email}
                     onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                    onBlur={(e) => handleCheckCustomerEmail(e.target.value)}
                     placeholder="joao@exemplo.com"
                     className="rounded-xl"
                   />
