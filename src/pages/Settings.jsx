@@ -275,7 +275,7 @@ export default function Settings() {
 
   const saveUserMutation = useMutation({
     mutationFn: async (userData) => {
-      // Helper para token fresco (evita Token expirado ao salvar)
+      // Helper para token fresco + retry automático em 401 (evita Sessão expirada)
       const getFreshToken = async () => {
         try {
           const tok = await getValidAccessToken();
@@ -285,18 +285,34 @@ export default function Settings() {
         if (session?.access_token) return session.access_token;
         try { const { data: r } = await supabase.auth.refreshSession(); return r?.session?.access_token || null; } catch { return null; }
       };
+      const fetchWithAuthRetry = async (url, options, token) => {
+        let res = await fetch(url, { ...options, headers: { ...options.headers, "Authorization": `Bearer ${token || ""}` } });
+        if (res.status === 401) {
+          // Tenta refresh e re-tenta uma vez
+          try {
+            const { data: refreshed, error: refErr } = await supabase.auth.refreshSession();
+            const newToken = refreshed?.session?.access_token;
+            if (!refErr && newToken && newToken !== token) {
+              res = await fetch(url, { ...options, headers: { ...options.headers, "Authorization": `Bearer ${newToken}` } });
+            } else if (refErr || !newToken) {
+              // Refresh falhou (ex: após troca de senha) - força re-login
+              throw new Error("Sessão expirada - faça login novamente");
+            }
+          } catch (e) {
+            if (e.message.includes("Sessão expirada")) throw e;
+          }
+        }
+        return res;
+      };
       if (editingUser) {
         // Admin editando outro admin da mesma empresa -> usar API que valida mesma empresa e bypassa RLS
         const isEditingSelf = editingUser.id === currentUser?.id;
         const shouldUseApi = !isSuperAdmin && isAdmin && !isEditingSelf;
         if (shouldUseApi) {
           const freshToken = await getFreshToken();
-          const res = await fetch(`${window.location.origin}/api/auth/admin-update-user`, {
+          const res = await fetchWithAuthRetry(`${window.location.origin}/api/auth/admin-update-user`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${freshToken || ""}`,
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               user_id: editingUser.id,
               full_name: userData.full_name || null,
@@ -311,7 +327,7 @@ export default function Settings() {
               phone: userData.whatsapp || null,
               company_ids: userData.company_ids || [],
             }),
-          });
+          }, freshToken);
           const result = await res.json();
           if (!res.ok) throw new Error(result.error || "Erro ao atualizar usuário");
           return editingUser;
@@ -356,12 +372,9 @@ export default function Settings() {
           throw new Error("A senha deve ter pelo menos 6 caracteres");
         }
         const freshToken2 = await getFreshToken();
-        const res = await fetch(`${window.location.origin}/api/auth/admin-create-user`, {
+        const res = await fetchWithAuthRetry(`${window.location.origin}/api/auth/admin-create-user`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${freshToken2 || ""}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: userData.email,
             password: userData.password,
@@ -373,7 +386,7 @@ export default function Settings() {
             rg: userData.rg || "",
             birth_date: userData.birth_date || "",
           }),
-        });
+        }, freshToken2);
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || "Erro ao criar usuário");
 
@@ -414,12 +427,19 @@ export default function Settings() {
     onError: (error) => {
       console.error("saveUserMutation error:", error);
       let msg = error?.message || error?.error?.message || "Erro ao salvar usuário";
+      if (msg.includes("Sessão expirada - faça login novamente")) {
+        toast.error("Sua sessão expirou após troca de senha. Faça login novamente.");
+        setTimeout(()=> { window.location.href = "/login"; }, 1500);
+        return;
+      }
       if (msg.includes("NO_TOKEN") || msg.includes("Token de acesso não fornecido")) {
         msg = "Sessão expirada. Faça login novamente e tente outra vez.";
+        setTimeout(()=> { window.location.href = "/login"; }, 1500);
       } else if (msg.includes("INVALID_TOKEN") || msg.includes("Token inválido") || msg.includes("expirado")) {
-        msg = "Sessão expirada. A página vai atualizar sua sessão — tente novamente em 2 segundos.";
-        // tenta refresh silencioso
-        supabase.auth.refreshSession().catch(()=>{});
+        msg = "Sessão expirada. Tente salvar novamente em 2 segundos.";
+        supabase.auth.refreshSession().then(({ data })=>{
+          if(!data?.session) window.location.href = "/login";
+        }).catch(()=>{ window.location.href = "/login"; });
       } else if (msg.includes("already been registered") || msg.includes("already registered")) {
         msg = "Este e-mail já está registrado como usuário do sistema. Tente editar o usuário existente.";
       }
