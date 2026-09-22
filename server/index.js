@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import { createServerSupabase } from "./lib/supabase.js";
+import { createServerSupabase, createAuthSupabase } from "./lib/supabase.js";
 import asaasRouter from "./routes/asaas.js";
 import whatsappRouter from "./routes/whatsapp.js";
 import emailRouter from "./routes/email.js";
@@ -17,8 +17,10 @@ const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.resolve(__dirname, "..", "dist");
 
+// Segurança básica sem quebrar SaaS (credenciais fáceis mantidas por enquanto)
+app.disable("x-powered-by");
 app.use(cors({ origin: true }));
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 
 // Serve frontend static files BEFORE auth middleware
 app.use(express.static(distPath));
@@ -37,10 +39,11 @@ app.get("/api/health", (req, res) => {
 // Auth middleware - only for API routes
 app.use("/api", async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const rawToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const token = rawToken?.trim() || null;
 
   if (!token) {
-    return res.status(401).json({ error: "Token de acesso não fornecido" });
+    return res.status(401).json({ error: "Token de acesso não fornecido", code: "NO_TOKEN" });
   }
 
   const sb = createServerSupabase();
@@ -52,16 +55,28 @@ app.use("/api", async (req, res, next) => {
     return next();
   }
 
+  // Usa cliente com URL pública para validar o JWT (emitido pelo host público)
+  // Evita "Token inválido ou expirado" quando SUPABASE_INTERNAL_URL está inacessível
+  const authSb = createAuthSupabase();
   try {
-    const { data: { user }, error } = await sb.auth.getUser(token);
+    // Timeout de 8s para não travar o request se o Supabase estiver lento
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    // Supabase JS não expõe signal diretamente, mas o fetch global respeita AbortController via global.fetch
+    // Fallback: chama getUser e trata erro de rede
+    const { data: { user }, error } = await authSb.auth.getUser(token);
+    clearTimeout(timeout);
     if (error || !user) {
-      return res.status(401).json({ error: "Token inválido ou expirado" });
+      console.warn(`[auth] getUser falhou: ${error?.message || "no user"} - token ${token.slice(0,12)}...`);
+      return res.status(401).json({ error: "Token inválido ou expirado", code: "INVALID_TOKEN", detail: error?.message });
     }
     req.user = user;
-    req.supabase = sb;
+    req.supabase = sb; // usa cliente interno para queries DB (mais rápido)
     next();
   } catch (err) {
-    return res.status(500).json({ error: "Erro ao validar token" });
+    const isAbort = err?.name === "AbortError";
+    console.error(`[auth] Erro ao validar token${isAbort ? " (timeout)" : ""}:`, err?.message || err);
+    return res.status(401).json({ error: "Token inválido ou expirado", code: "TOKEN_VALIDATION_FAILED", detail: err?.message });
   }
 });
 

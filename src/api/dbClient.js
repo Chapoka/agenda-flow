@@ -276,7 +276,7 @@
  * @property {string} [updated_at]
  */
 
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, getValidAccessToken } from "@/lib/supabaseClient";
 
 const _tableColumnsCache = {};
 function cacheColumnsFromRow(table, row) {
@@ -587,7 +587,16 @@ export const db = {
       console.log("=== inviteUser ===", { email, role, full_name });
       const tempPassword = (crypto.randomUUID?.() || Math.random().toString(36).slice(2, 14)) + "!Aa1";
 
-      const { data: { session } } = await supabase.auth.getSession();
+      // Obtém token válido com refresh automático (corrige Token expirado)
+      let accessToken = null;
+      try { accessToken = await getValidAccessToken(); } catch {}
+      if (!accessToken) {
+        const { data: { session } } = await supabase.auth.getSession();
+        accessToken = session?.access_token || null;
+      }
+      if (!accessToken) {
+        try { const { data: r } = await supabase.auth.refreshSession(); accessToken = r?.session?.access_token || null; } catch {}
+      }
       const apiBase = import.meta.env.VITE_API_URL || "";
 
       // 1. Tenta criar via servidor (usa admin API com service_role)
@@ -596,7 +605,7 @@ export const db = {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token || ""}`,
+            "Authorization": `Bearer ${accessToken || ""}`,
           },
           body: JSON.stringify({
             email,
@@ -661,13 +670,15 @@ export const db = {
 
       console.log("User created via signUp:", signUpData.user.id);
 
-      // 3. Confirma o e-mail para login imediato
+      // 3. Confirma o e-mail para login imediato (usa token fresco)
       try {
+        let confirmToken = accessToken;
+        try { confirmToken = await getValidAccessToken() || confirmToken; } catch {}
         await fetch(`${apiBase || window.location.origin}/api/auth/confirm-email`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token || ""}`,
+            "Authorization": `Bearer ${confirmToken || ""}`,
           },
           body: JSON.stringify({ user_id: signUpData.user.id }),
         });
@@ -682,13 +693,15 @@ export const db = {
       };
     },
     updateUser: async (userId, data) => {
-      const { data: { session } } = await supabase.auth.getSession();
+      let token = null;
+      try { token = await getValidAccessToken(); } catch {}
+      if (!token) { const { data: { session } } = await supabase.auth.getSession(); token = session?.access_token || null; }
       const apiBase = import.meta.env.VITE_API_URL || "";
       const res = await fetch(`${apiBase || window.location.origin}/api/auth/admin-update-user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token || ""}`,
+          "Authorization": `Bearer ${token || ""}`,
         },
         body: JSON.stringify({ user_id: userId, ...data }),
       });
@@ -717,12 +730,14 @@ export const db = {
       const apiPath = routeMap[functionName];
       if (apiPath) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
+          let fTok = null;
+          try { fTok = await getValidAccessToken(); } catch {}
+          if (!fTok) { const { data: { session } } = await supabase.auth.getSession(); fTok = session?.access_token || null; }
           const res = await fetch(`${apiBase}${apiPath}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${session?.access_token || ""}`,
+              "Authorization": `Bearer ${fTok || ""}`,
             },
             body: JSON.stringify(payload),
           });

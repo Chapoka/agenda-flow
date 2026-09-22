@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/dbClient";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, getValidAccessToken } from "@/lib/supabaseClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Settings as SettingsIcon,
@@ -97,7 +97,9 @@ export default function Settings() {
   useEffect(() => {
     localStorage.setItem("form_draft_user_open", String(showUserModal));
     if (showUserModal) {
-      localStorage.setItem("form_draft_user", JSON.stringify(userFormData));
+      // Nunca persistir senha em localStorage (evita vazamento via XSS)
+      const { password: _pw, ...safeData } = userFormData;
+      localStorage.setItem("form_draft_user", JSON.stringify(safeData));
     }
   }, [userFormData, showUserModal]);
 
@@ -267,17 +269,27 @@ export default function Settings() {
 
   const saveUserMutation = useMutation({
     mutationFn: async (userData) => {
+      // Helper para token fresco (evita Token expirado ao salvar)
+      const getFreshToken = async () => {
+        try {
+          const tok = await getValidAccessToken();
+          if (tok) return tok;
+        } catch {}
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) return session.access_token;
+        try { const { data: r } = await supabase.auth.refreshSession(); return r?.session?.access_token || null; } catch { return null; }
+      };
       if (editingUser) {
         // Admin editando outro admin da mesma empresa -> usar API que valida mesma empresa e bypassa RLS
         const isEditingSelf = editingUser.id === currentUser?.id;
         const shouldUseApi = !isSuperAdmin && isAdmin && !isEditingSelf;
         if (shouldUseApi) {
-          const { data: { session } } = await supabase.auth.getSession();
+          const freshToken = await getFreshToken();
           const res = await fetch(`${window.location.origin}/api/auth/admin-update-user`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${session?.access_token || ""}`,
+              "Authorization": `Bearer ${freshToken || ""}`,
             },
             body: JSON.stringify({
               user_id: editingUser.id,
@@ -337,12 +349,12 @@ export default function Settings() {
         if (!userData.password || userData.password.length < 6) {
           throw new Error("A senha deve ter pelo menos 6 caracteres");
         }
-        const { data: { session } } = await supabase.auth.getSession();
+        const freshToken2 = await getFreshToken();
         const res = await fetch(`${window.location.origin}/api/auth/admin-create-user`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token || ""}`,
+            "Authorization": `Bearer ${freshToken2 || ""}`,
           },
           body: JSON.stringify({
             email: userData.email,
@@ -403,7 +415,13 @@ export default function Settings() {
     onError: (error) => {
       console.error("saveUserMutation error:", error);
       let msg = error?.message || error?.error?.message || "Erro ao salvar usuário";
-      if (msg.includes("already been registered") || msg.includes("already registered")) {
+      if (msg.includes("NO_TOKEN") || msg.includes("Token de acesso não fornecido")) {
+        msg = "Sessão expirada. Faça login novamente e tente outra vez.";
+      } else if (msg.includes("INVALID_TOKEN") || msg.includes("Token inválido") || msg.includes("expirado")) {
+        msg = "Sessão expirada. A página vai atualizar sua sessão — tente novamente em 2 segundos.";
+        // tenta refresh silencioso
+        supabase.auth.refreshSession().catch(()=>{});
+      } else if (msg.includes("already been registered") || msg.includes("already registered")) {
         msg = "Este e-mail já está registrado como usuário do sistema. Tente editar o usuário existente.";
       }
       toast.error(msg);
@@ -414,12 +432,14 @@ export default function Settings() {
     mutationFn: async (userId) => {
       // Tenta via servidor (mais confiável, usa service_role)
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        let delToken = null;
+        try { delToken = await getValidAccessToken(); } catch {}
+        if (!delToken) { const { data: { session } } = await supabase.auth.getSession(); delToken = session?.access_token || null; }
         const res = await fetch(`${window.location.origin}/api/auth/admin-delete-user`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token || ""}`,
+            "Authorization": `Bearer ${delToken || ""}`,
           },
           body: JSON.stringify({ user_id: userId }),
         });
@@ -448,12 +468,14 @@ export default function Settings() {
     mutationFn: async ({ id, active }) => {
       // Admin só pode alterar outro admin da mesma empresa -> usar API que valida
       if (!isSuperAdmin && isAdmin && id !== currentUser?.id) {
-        const { data: { session } } = await supabase.auth.getSession();
+        let togToken = null;
+        try { togToken = await getValidAccessToken(); } catch {}
+        if (!togToken) { const { data: { session } } = await supabase.auth.getSession(); togToken = session?.access_token || null; }
         const res = await fetch(`${window.location.origin}/api/auth/admin-update-user`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token || ""}`,
+            "Authorization": `Bearer ${togToken || ""}`,
           },
           body: JSON.stringify({ user_id: id, active }),
         });

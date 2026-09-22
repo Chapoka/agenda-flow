@@ -1,9 +1,34 @@
 import { test, expect } from "@playwright/test";
+import fs from "fs";
 
-const EMAIL = "rodrigo.rocha@morumbisolutions.com.br";
-const PASSWORD = "Test1234!";
+// Carrega .env (raiz) manualmente para não depender de dotenv instalado
+// Mantém funcionamento local após esconder credenciais do git
+function loadEnvIfExists(path) {
+  try {
+    if (!fs.existsSync(path)) return;
+    const content = fs.readFileSync(path, "utf-8");
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const val = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+      if (key && !(key in process.env) && val) process.env[key] = val;
+    }
+  } catch {}
+}
+loadEnvIfExists(".env");
+loadEnvIfExists(".env.local");
+loadEnvIfExists("EASYPANEL-APP-PARA-COLAR.env");
+
+const EMAIL = process.env.E2E_EMAIL || process.env.TEST_EMAIL || "";
+const PASSWORD = process.env.E2E_PASSWORD || process.env.TEST_PASSWORD || "";
 
 async function login(page) {
+  if (!EMAIL || !PASSWORD) {
+    throw new Error("E2E_EMAIL/E2E_PASSWORD não definidos. Crie .env na raiz (ignorado) com E2E_EMAIL e E2E_PASSWORD ou exporte as variáveis. Veja .env.local.example");
+  }
   await page.goto("/login");
   await page.waitForSelector('input[type="email"]', { timeout: 10000 });
   const emailInput = page.locator('input[type="email"]');

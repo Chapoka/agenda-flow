@@ -23,13 +23,15 @@ try {
   console.error("Erro ao carregar .env do servidor:", e);
 }
 
-const supabaseUrl = process.env.SUPABASE_INTERNAL_URL || process.env.VITE_SUPABASE_URL;
+const supabaseInternalUrl = process.env.SUPABASE_INTERNAL_URL;
+const supabasePublicUrl = process.env.VITE_SUPABASE_URL;
+const supabaseUrl = supabaseInternalUrl || supabasePublicUrl;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Loga qual rede está usando (interna = sem internet, mais rápido)
-if (!process.env.SUPABASE_INTERNAL_URL) {
+if (!supabaseInternalUrl) {
   console.warn("[supabase] SUPABASE_INTERNAL_URL não definido, usando VITE_SUPABASE_URL (via internet) - defina http://agendaflow-supabase-kong:8000 no EasyPanel");
 } else {
-  console.log(`[supabase] Conectado via rede interna: ${supabaseUrl}`);
+  console.log(`[supabase] Conectado via rede interna: ${supabaseUrl} (auth via público: ${supabasePublicUrl})`);
 }
 
 export function createServerSupabase() {
@@ -39,6 +41,18 @@ export function createServerSupabase() {
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
     realtime: { params: { eventsPerSecondLimit: 1 } },
+  });
+}
+
+// Cliente específico para validar JWTs — sempre usa URL pública que emitiu o token
+// Evita falha "Token inválido ou expirado" quando SUPABASE_INTERNAL_URL aponta para Kong interno inacessível
+export function createAuthSupabase() {
+  const url = supabasePublicUrl || supabaseUrl;
+  if (!url || !supabaseServiceKey) {
+    throw new Error("VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set for auth");
+  }
+  return createClient(url, supabaseServiceKey, {
+    auth: { persistSession: false },
   });
 }
 
