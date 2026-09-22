@@ -156,12 +156,18 @@ export default function Customers() {
   });
 
   const { data: companies = [] } = useQuery({
-    queryKey: ["companies"],
+    queryKey: ["companies", ...userCompanyIds, isSuperAdmin],
     queryFn: async () => {
       logger.api("FETCH companies");
       const result = await db.entities.Company.list();
       logger.api("FETCH companies response", result);
       return result;
+    },
+    select: (data) => {
+      // Isolamento multi-tenant: admin/profissional só vê empresas vinculadas ao seu cadastro
+      if (isSuperAdmin) return data;
+      if (userCompanyIds.length === 0) return [];
+      return data.filter(c => userCompanyIds.includes(c.id));
     },
   });
 

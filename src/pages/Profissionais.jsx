@@ -80,7 +80,8 @@ const TABS = [
 export default function Profissionais() {
   const queryClient = useQueryClient();
   const theme = useThemeMode();
-  const { companyId, isSuperAdmin, ready } = useCurrentUser();
+  const { companyId, companyIds: hookCompanyIds, isSuperAdmin, ready } = useCurrentUser();
+  const userCompanyIds = hookCompanyIds || [];
   const isMobile = useIsMobile();
 
   const [search, setSearch] = useState("");
@@ -124,9 +125,14 @@ export default function Profissionais() {
   });
 
   const { data: allCompanies = [] } = useQuery({
-    queryKey: ["companies"],
+    queryKey: ["companies", isSuperAdmin, ...userCompanyIds],
     queryFn: () => db.entities.Company.list(),
     enabled: ready,
+    select: (data) => {
+      if (isSuperAdmin) return data;
+      if (userCompanyIds.length === 0) return [];
+      return data.filter(c => userCompanyIds.includes(c.id));
+    },
   });
 
   const { data: allOverrides = [] } = useQuery({

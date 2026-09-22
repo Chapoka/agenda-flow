@@ -85,9 +85,15 @@ export default function Schedule() {
   const [agendaListView, setAgendaListView] = useState("grade");
 
   const { data: companies = [] } = useQuery({
-    queryKey: ["companies"],
+    queryKey: ["companies", isSuperAdmin, ...(currentUser?.company_ids || [])],
     queryFn: () => db.entities.Company.list(),
     enabled: !!currentUser,
+    select: (data) => {
+      if (isSuperAdmin) return data;
+      const ids = currentUser?.company_ids?.length ? currentUser.company_ids : (currentUser?.company_id ? [currentUser.company_id] : []);
+      if (ids.length === 0) return [];
+      return data.filter(c => ids.includes(c.id));
+    },
   });
 
   // Effective company filter
