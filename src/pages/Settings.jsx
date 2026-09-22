@@ -913,6 +913,14 @@ export default function Settings() {
                     value={companySearch}
                     onChange={(e) => setCompanySearch(e.target.value)}
                     autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-form-type="other"
+                    name="company_search"
+                    readOnly
+                    onFocus={(e) => e.currentTarget.removeAttribute('readOnly')}
                     className="pl-9 rounded-xl"
                   />
                 </div>
@@ -1033,6 +1041,14 @@ export default function Settings() {
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
                   autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-form-type="other"
+                  name="user_search"
+                  readOnly
+                  onFocus={(e) => e.currentTarget.removeAttribute('readOnly')}
                   className="pl-9 rounded-xl"
                 />
               </div>

@@ -78,23 +78,35 @@ router.post("/admin-create-user", async (req, res) => {
     });
 
     if (createError) {
-      // Se o e-mail já está registrado, retorna 409 com link para o usuário existente
+      // Se o e-mail já está registrado, retorna 409 com link para o usuário existente (otimizado: busca via public.users primeiro)
       const msgLower = (createError.message || "").toLowerCase();
       const isAlreadyRegistered = msgLower.includes("already") && msgLower.includes("registered");
       if (isAlreadyRegistered) {
+        // Tenta via public.users (mais rápido, service_role bypassa RLS)
+        const { data: existingProfile } = await req.supabase.from("users").select("id, full_name, email, role").eq("email", email).maybeSingle();
+        if (existingProfile) {
+          return res.status(409).json({
+            error: "Este e-mail já está cadastrado como usuário",
+            code: "USER_ALREADY_EXISTS",
+            existing_user_id: existingProfile.id,
+            existing_user_email: existingProfile.email,
+            existing_user_name: existingProfile.full_name || existingProfile.email,
+            existing_user_role: existingProfile.role || "cliente",
+          });
+        }
+        // Fallback: lista auth.users apenas se não encontrou em public.users (caso trigger falhou)
         const { data: existingUsers, error: listErr } = await req.supabase.auth.admin.listUsers();
         if (listErr) throw listErr;
         const existing = (existingUsers?.users || []).find(u => u.email.toLowerCase() === email.toLowerCase());
         if (!existing) throw createError;
-        // Busca dados do usuário existente para link
-        const { data: existingProfile } = await req.supabase.from("users").select("id, full_name, email, role").eq("id", existing.id).maybeSingle();
+        const { data: fallbackProfile } = await req.supabase.from("users").select("id, full_name, email, role").eq("id", existing.id).maybeSingle();
         return res.status(409).json({
           error: "Este e-mail já está cadastrado como usuário",
           code: "USER_ALREADY_EXISTS",
           existing_user_id: existing.id,
           existing_user_email: existing.email,
-          existing_user_name: existingProfile?.full_name || existing.email,
-          existing_user_role: existingProfile?.role || "cliente",
+          existing_user_name: fallbackProfile?.full_name || existing.email,
+          existing_user_role: fallbackProfile?.role || "cliente",
         });
       } else {
         throw createError;
