@@ -149,7 +149,7 @@ export default function Settings() {
   });
 
   const { data: companies = [] } = useQuery({
-    queryKey: ["companies", isSuperAdmin, ...(currentUser?.company_ids || [])],
+    queryKey: ["companies"],
     queryFn: () => db.entities.Company.list(),
     select: (data) => {
       if (isSuperAdmin) return data;
@@ -377,17 +377,10 @@ export default function Settings() {
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || "Erro ao criar usuário");
 
-        if (result.user_id && userData.company_ids?.length) {
-          await supabase.from("user_companies").delete().eq("user_id", result.user_id);
-          const rows = userData.company_ids.map(company_id => ({
-            user_id: result.user_id,
-            company_id,
-          }));
-          await supabase.from("user_companies").insert(rows);
-        }
-
+        // Vínculo user_companies agora é feito pelo servidor via service_role (evita 403 RLS para admin)
+        // Mantém apenas is_professional como fallback silencioso (pode falhar para admin sem RLS, mas servidor já criou o usuário)
         if (result.user_id && userData.is_professional) {
-          await supabase.from("users").update({ is_professional: true }).eq("id", result.user_id);
+          try { await supabase.from("users").update({ is_professional: true }).eq("id", result.user_id); } catch {}
         }
 
         const roleLabel = userData.role === "super_admin" ? "Super Admin" : userData.role === "admin" ? "Administrador" : userData.role === "profissional" ? "Profissional" : "Cliente";

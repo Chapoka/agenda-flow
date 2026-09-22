@@ -156,7 +156,7 @@ export default function Customers() {
   });
 
   const { data: companies = [] } = useQuery({
-    queryKey: ["companies", ...userCompanyIds, isSuperAdmin],
+    queryKey: ["companies"],
     queryFn: async () => {
       logger.api("FETCH companies");
       const result = await db.entities.Company.list();

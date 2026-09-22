@@ -125,7 +125,7 @@ export default function Profissionais() {
   });
 
   const { data: allCompanies = [] } = useQuery({
-    queryKey: ["companies", isSuperAdmin, ...userCompanyIds],
+    queryKey: ["companies"],
     queryFn: () => db.entities.Company.list(),
     enabled: ready,
     select: (data) => {

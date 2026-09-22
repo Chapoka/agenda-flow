@@ -34,7 +34,7 @@ router.post("/confirm-email", async (req, res) => {
 // POST /api/auth/admin-create-user — criar um usuário (auth + public)
 router.post("/admin-create-user", async (req, res) => {
   try {
-    const { email, password, full_name, role, phone, commission_pct, specialty, photo_url, work_days, company_id, whatsapp, cpf, rg, birth_date } = req.body;
+    const { email, password, full_name, role, phone, commission_pct, specialty, photo_url, work_days, company_id, company_ids, whatsapp, cpf, rg, birth_date } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: "email e password são obrigatórios" });
     }
@@ -52,14 +52,18 @@ router.post("/admin-create-user", async (req, res) => {
       return res.status(403).json({ error: "Acesso negado" });
     }
 
+    // Normaliza company_ids (array) + company_id (legado) para validações
+    const requestedCompanyIds = Array.isArray(company_ids) ? company_ids.filter(Boolean)
+      : (company_id ? [company_id] : []);
     // Admin só pode criar usuários para sua própria empresa
-    if (profile?.role === "admin" && company_id) {
+    if (profile?.role === "admin" && requestedCompanyIds.length > 0) {
       const { data: callerCompanies } = await req.supabase
         .from("user_companies")
         .select("company_id")
         .eq("user_id", callerId);
       const callerCompanyIds = (callerCompanies || []).map(c => c.company_id);
-      if (!callerCompanyIds.includes(company_id)) {
+      const invalid = requestedCompanyIds.filter(id => !callerCompanyIds.includes(id));
+      if (invalid.length > 0) {
         return res.status(403).json({ error: "Acesso negado: não pode criar usuário para outra empresa" });
       }
     }
@@ -109,24 +113,27 @@ router.post("/admin-create-user", async (req, res) => {
     await req.supabase.from("users").update(updateData).eq("id", userId);
 
     // Garantir que user_companies seja preenchido para RLS (get_user_company_ids usa user_companies como fonte)
-    if (company_id) {
+    // Suporta tanto company_id (singular, legado) quanto company_ids (array, novo frontend)
+    const finalCompanyIds = requestedCompanyIds.length > 0 ? requestedCompanyIds : (company_id ? [company_id] : []);
+    if (finalCompanyIds.length > 0) {
+      // Cria vínculos via service_role (bypass RLS) - evita 403 para admin
+      const rows = finalCompanyIds.map(cid => ({ user_id: userId, company_id: cid }));
       const { error: ucErr } = await req.supabase
         .from("user_companies")
-        .upsert({ user_id: userId, company_id }, { onConflict: "user_id,company_id" });
+        .upsert(rows, { onConflict: "user_id,company_id" });
       if (ucErr) console.warn("user_companies upsert failed:", ucErr.message);
 
-      // Sincroniza users.company_ids para manter consistência com user_companies
+      // Sincroniza users.company_id (legado, primeira empresa) e users.company_ids (array)
       try {
         const { data: existing } = await req.supabase
           .from("users")
-          .select("company_ids")
+          .select("company_id, company_ids")
           .eq("id", userId)
           .single();
         const currentIds = existing?.company_ids || [];
-        if (!currentIds.includes(company_id)) {
-          const newIds = [...new Set([...currentIds, company_id])];
-          await req.supabase.from("users").update({ company_ids: newIds }).eq("id", userId);
-        }
+        const newIds = [...new Set([...currentIds, ...finalCompanyIds])];
+        const primaryCompanyId = existing?.company_id || finalCompanyIds[0] || null;
+        await req.supabase.from("users").update({ company_id: primaryCompanyId, company_ids: newIds }).eq("id", userId);
       } catch (e) {
         console.warn("company_ids sync failed:", e.message);
       }

@@ -85,7 +85,7 @@ export default function Schedule() {
   const [agendaListView, setAgendaListView] = useState("grade");
 
   const { data: companies = [] } = useQuery({
-    queryKey: ["companies", isSuperAdmin, ...(currentUser?.company_ids || [])],
+    queryKey: ["companies"],
     queryFn: () => db.entities.Company.list(),
     enabled: !!currentUser,
     select: (data) => {
