@@ -168,7 +168,8 @@ export default function Layout({ children, currentPageName }) {
 
   const navItems = allNavItems.filter(item => {
     if (!item.roles.includes(role)) return false;
-    if (item.page === "Companies" && !isSuperAdmin && userCompanyIds.length <= 1) return false;
+    // Admin com 1 empresa ainda vê Empresas (para gerenciar sua própria empresa)
+    // Profissional nunca vê Empresas/Configurações/Calendário (já bloqueado por roles)
     return true;
   });
   const roleLabel = role === "super_admin" ? "Super Admin" : role === "admin" ? "Administrador" : "Profissional";
