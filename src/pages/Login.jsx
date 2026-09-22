@@ -189,7 +189,7 @@ export default function Login() {
             )}
 
             {/* Email/Password Form */}
-            <form onSubmit={handleSubmit} className="space-y-stack-md">
+            <form onSubmit={handleSubmit} autoComplete="off" className="space-y-stack-md">
               {/* Email Input */}
               <div className="space-y-1">
                 <label className="block font-label-md text-label-md text-on-surface" htmlFor="email">E-mail</label>
@@ -200,10 +200,12 @@ export default function Login() {
                   <input
                     id="email"
                     type="email"
-                    autoComplete="email"
+                    autoComplete="off"
+                    autoFocus={false}
                     placeholder="voce@exemplo.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onFocus={(e) => e.target.setAttribute('autoComplete','email')}
                     className="block w-full pl-10 pr-3 py-3 bg-surface-container-highest border border-outline-variant/50 rounded-lg text-on-surface placeholder-outline focus:ring-2 focus:ring-primary focus:border-primary transition-all sm:text-sm relative z-10 cursor-text"
                     style={{ userSelect: "text", WebkitUserSelect: "text" }}
                     required
@@ -226,10 +228,11 @@ export default function Login() {
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onFocus={(e) => e.target.setAttribute('autoComplete','current-password')}
                     className="block w-full pl-10 pr-10 py-3 bg-surface-container-highest border border-outline-variant/50 rounded-lg text-on-surface placeholder-outline focus:ring-2 focus:ring-primary focus:border-primary transition-all sm:text-sm relative z-10 cursor-text"
                     style={{ userSelect: "text", WebkitUserSelect: "text" }}
                     required

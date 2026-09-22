@@ -912,6 +912,7 @@ export default function Settings() {
                     placeholder="Buscar empresa por nome, cidade ou CNPJ..."
                     value={companySearch}
                     onChange={(e) => setCompanySearch(e.target.value)}
+                    autoComplete="off"
                     className="pl-9 rounded-xl"
                   />
                 </div>
@@ -1031,6 +1032,7 @@ export default function Settings() {
                   placeholder="Buscar usuário por nome, e-mail ou perfil..."
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
+                  autoComplete="off"
                   className="pl-9 rounded-xl"
                 />
               </div>
