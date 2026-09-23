@@ -163,7 +163,7 @@ CPF_API_KEY=
 > `SUPABASE_SERVICE_ROLE_KEY` está em `supabase/.env.easypanel.ready:13` — **NUNCA** exponha no frontend, só no EasyPanel Env.
 
 **Domains:**
-- `agendaflow.fpczjb.easypanel.host` (ou seu domínio) → porta `3001`
+- `agendaflow.morumbisolutions.com.br` (domínio real de produção) → porta `3001`
 
 **Deploy:**
 - Auto Deploy: **ON** (deploy a cada `git push main`)

@@ -109,7 +109,14 @@ Banco final: 4 users · 4 companies · 1 customer · 0 planos de teste · 0 sett
 ## 7. Pendências (ação manual)
 
 1. ~~Rodar no Supabase SQL Editor: `20260926` + `20260927`~~ ✅ **executadas e verificadas**
-2. **Deploy no EasyPanel** — Auto Deploy ON no `main`; acompanhar Actions/EasyPanel após este push.
+2. **Deploy no EasyPanel** — domínio de produção: `https://agendaflow.morumbisolutions.com.br`.
+   - **Status em 2026-09-23 01:55 (UTC-3):** produção ainda no build de **22/09 23:22** (`index-B6p15JS2.js`, sem rota `/api/settings`); CI/Docker verdes nos pushes `973a8b9` e `ab17254`, mas o serviço **não re-deployou** (Auto Deploy OFF ou webhook GitHub→EasyPanel desconectado — `gh api repos/.../hooks` sem hook visível).
+   - **Ação:** EasyPanel → `agendaflow-app` → **Deploy** (ou reconectar GitHub + Auto Deploy ON). Depois validar:
+     ```
+     curl https://agendaflow.morumbisolutions.com.br/api/health
+     # e /api/settings com token super_admin → 200
+     ```
+   - Testes contra produção: `PLAYWRIGHT_BASE_URL=https://agendaflow.morumbisolutions.com.br npx playwright test`
 3. ~~Corrigir `typecheck` (`jsconfig.json`)~~ ✅ removido `ignoreDeprecations` inválido
 
 ---
