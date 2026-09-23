@@ -15,7 +15,7 @@
 | `permissions-audit.spec.js` (matriz + token + cadastro) | 6 | ✅ 6/6 |
 | **Total** | **25** | **✅ 25/25 (2,7 min)** |
 
-`npm run lint` ✅ · `npm run build` ✅ (48s) · `typecheck` ⚠️ falha pré-existente de config (`jsconfig.json` `ignoreDeprecations`), não relacionada ao código.
+`npm run lint` ✅ · `npm run build` ✅ (48s) · `npm run typecheck` ✅
 
 ---
 
@@ -62,7 +62,13 @@ Empresas, Clientes, Profissionais, Planos, Níveis, Templates, Fila de Espera, C
 - **Correções:**
   - Novo endpoint `GET/POST /api/settings` com `service_role` (`server/routes/settings.js`) — só super_admin.
   - `saveMutation` agora usa a API + tem `onError` com toast explícito.
-  - Migração `supabase/migrations/20260927_restore_settings_rls.sql` **precisa ser executada no SQL Editor** para restaurar policies de `settings`, `modalities`, `establishment_types` e `stylist_levels`.
+  - Migração `supabase/migrations/20260927_restore_settings_rls.sql` **executada no SQL Editor** (junto com `20260926_fix_companies_isolation_leak.sql`).
+- **Verificação pós-migration:**
+  - `settings` SELECT/INSERT/UPDATE como super_admin: 200/201/204 ✅
+  - `settings` INSERT como admin: 403 (correto) · SELECT como admin: 200 ✅
+  - `establishment_types` SELECT: 200 com dados reais ✅
+  - `POST /api/settings`: 200 em 167 ms ✅
+  - Policies de `companies/customers/customer_companies/appointments/invoices` presentes ✅
 
 ### 5.2 Modal de usuário fechava no blur do e-mail
 - `handleCheckCustomerEmail` fechava o modal ao sair do campo e-mail → form sumia ao digitar senha → flaky "Perfil não encontrado".
@@ -102,11 +108,9 @@ Banco final: 4 users · 4 companies · 1 customer · 0 planos de teste · 0 sett
 
 ## 7. Pendências (ação manual)
 
-1. **Rodar no Supabase SQL Editor** (ordem):
-   - `supabase/migrations/20260926_fix_companies_isolation_leak.sql` (já pendente)
-   - `supabase/migrations/20260927_restore_settings_rls.sql` (novo — restaura RLS de Settings)
-2. **Deploy no EasyPanel** (build já verde: `npm run build`).
-3. Opcional: corrigir `typecheck` (`jsconfig.json` `ignoreDeprecations` inválido para o TS instalado).
+1. ~~Rodar no Supabase SQL Editor: `20260926` + `20260927`~~ ✅ **executadas e verificadas**
+2. **Deploy no EasyPanel** — Auto Deploy ON no `main`; acompanhar Actions/EasyPanel após este push.
+3. ~~Corrigir `typecheck` (`jsconfig.json`)~~ ✅ removido `ignoreDeprecations` inválido
 
 ---
 
@@ -114,5 +118,5 @@ Banco final: 4 users · 4 companies · 1 customer · 0 planos de teste · 0 sett
 
 - `server/routes/settings.js` (novo) · `server/index.js`
 - `src/pages/Settings.jsx` (saveMutation + modal e-mail + busca sem readOnly)
-- `supabase/migrations/20260927_restore_settings_rls.sql` (novo)
+- `supabase/migrations/20260927_restore_settings_rls.sql` (novo) · `jsconfig.json`
 - `tests/permissions-audit.spec.js` (novo) · `tests/crud.spec.js` · `tests/wellington.spec.js` · `tests/full-flow.spec.js`
