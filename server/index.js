@@ -72,7 +72,8 @@ app.use("/api", async (req, res, next) => {
       return res.status(401).json({ error: "Token inválido ou expirado", code: "INVALID_TOKEN", detail: error?.message });
     }
     req.user = user;
-    req.supabase = sb; // usa cliente interno para queries DB (mais rápido)
+    // Cliente para queries DB — createServerSupabase já faz fallback p/ URL pública se a interna falhar
+    req.supabase = sb;
     next();
   } catch (err) {
     const isAbort = err?.name === "AbortError";
@@ -96,6 +97,27 @@ async function attachUserRole(req, res, next) {
       .single();
 
     if (error || !profile) {
+      // Distingue rede/RLS de "usuário realmente não existe"
+      const msg = error?.message || "no row";
+      const isNet =
+        /fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|timeout|AbortError/i.test(msg);
+      if (isNet) {
+        console.error("[rbac] supabase inacessível:", msg);
+        return res.status(503).json({
+          error: "Supabase indisponível",
+          code: "SUPABASE_UNREACHABLE",
+          detail: msg,
+        });
+      }
+      if (error && error.code && error.code !== "PGRST116") {
+        console.error("[rbac] erro ao buscar perfil:", error);
+        return res.status(500).json({
+          error: "Erro ao buscar perfil do usuário",
+          code: "PROFILE_LOOKUP_FAILED",
+          detail: msg,
+        });
+      }
+      console.warn("[rbac] perfil não encontrado para", req.user.id, msg);
       return res.status(403).json({ error: "Perfil de usuário não encontrado" });
     }
 
@@ -112,6 +134,14 @@ async function attachUserRole(req, res, next) {
     }
     next();
   } catch (err) {
+    console.error("[rbac] exceção ao buscar perfil:", err);
+    if (/fetch failed|ENOTFOUND|ECONNREFUSED|timeout/i.test(err?.message || "")) {
+      return res.status(503).json({
+        error: "Supabase indisponível",
+        code: "SUPABASE_UNREACHABLE",
+        detail: err.message,
+      });
+    }
     return res.status(500).json({ error: "Erro ao buscar perfil do usuário" });
   }
 }

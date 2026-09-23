@@ -25,18 +25,59 @@ try {
 
 const supabaseInternalUrl = process.env.SUPABASE_INTERNAL_URL;
 const supabasePublicUrl = process.env.VITE_SUPABASE_URL;
-const supabaseUrl = supabaseInternalUrl || supabasePublicUrl;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-// Loga qual rede está usando (interna = sem internet, mais rápido)
+
+// Probe da rede interna: se Kong não responder, cai para a URL pública.
+// Evita "fetch failed" / "Perfil de usuário não encontrado" quando os
+// serviços EasyPanel não compartilham a mesma Docker network.
+let internalReachable = Boolean(supabaseInternalUrl);
+
+async function probeInternal() {
+  if (!supabaseInternalUrl) {
+    internalReachable = false;
+    return;
+  }
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`${supabaseInternalUrl}/rest/v1/`, {
+      method: "HEAD",
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    internalReachable = res.status < 500;
+  } catch {
+    internalReachable = false;
+  }
+  if (!internalReachable) {
+    console.warn(
+      `[supabase] SUPABASE_INTERNAL_URL (${supabaseInternalUrl}) inacessível — usando URL pública: ${supabasePublicUrl}`
+    );
+  }
+}
+probeInternal().catch(() => {});
+
+function resolveServerUrl() {
+  if (supabaseInternalUrl && internalReachable) return supabaseInternalUrl;
+  return supabasePublicUrl || supabaseInternalUrl;
+}
+
 if (!supabaseInternalUrl) {
-  console.warn("[supabase] SUPABASE_INTERNAL_URL não definido, usando VITE_SUPABASE_URL (via internet) - defina http://agendaflow-supabase-kong:8000 no EasyPanel");
+  console.warn(
+    "[supabase] SUPABASE_INTERNAL_URL não definido, usando VITE_SUPABASE_URL (via internet) - defina http://agendaflow-supabase-kong:8000 no EasyPanel"
+  );
 } else {
-  console.log(`[supabase] Conectado via rede interna: ${supabaseUrl} (auth via público: ${supabasePublicUrl})`);
+  console.log(
+    `[supabase] Alvo atual: ${resolveServerUrl()} (auth via público: ${supabasePublicUrl})`
+  );
 }
 
 export function createServerSupabase() {
+  const supabaseUrl = resolveServerUrl();
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error("SUPABASE_INTERNAL_URL (ou VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY must be set");
+    throw new Error(
+      "SUPABASE_INTERNAL_URL (ou VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY must be set"
+    );
   }
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
