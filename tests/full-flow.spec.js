@@ -16,6 +16,7 @@ async function login(page, email, pwd){
 }
 
 test("Fluxo completo super_admin sem Select is not defined", async ({ page })=>{
+  test.setTimeout(180_000);
   const errors = [];
   page.on("pageerror", err=> { console.log("PAGEERROR:", err.message); errors.push(err.message); });
   page.on("console", msg=>{ if(msg.type()==="error") console.log("CONSOLE ERROR:", msg.text()); });

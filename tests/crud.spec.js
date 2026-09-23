@@ -73,7 +73,7 @@ test("CRUD: Empresas", async ({ page }) => {
   await page.waitForTimeout(2000);
   await expect(page.getByRole("heading", { name: "Empresas" })).toBeVisible({ timeout: 10000 });
 
-  await page.getByRole("button", { name: /novo/i }).first().click();
+  await page.getByRole("button", { name: /nova empresa|novo/i }).first().click();
   await page.waitForTimeout(1500);
 
   const modal = page.locator('.fixed.inset-0');

@@ -51,10 +51,12 @@ test("Wellington admin cria usuário - deve não dar Perfil não encontrado", as
       console.log("email input não visível, tentando placeholder");
       await page.fill('input[placeholder*="mail"], input[placeholder*="e-mail"]', email).catch(()=>{});
     }
-    // Nome
-    const nameInput = page.locator('input[placeholder*="ome"], input[placeholder*="Nome"]' ).first();
-    if (await nameInput.isVisible()) {
+    // Nome (placeholder do modal, não o campo de busca da lista)
+    const nameInput = page.locator('input[placeholder*="João"], input[placeholder*="Nome do"], input[name="full_name"]').first();
+    if (await nameInput.isVisible().catch(()=>false)) {
       await nameInput.fill("Teste E2E Filho");
+    } else {
+      console.log("campo nome não encontrado no modal");
     }
     // Senha
     const passInput = page.locator('input[type="password"]').first();

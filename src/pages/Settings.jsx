@@ -129,7 +129,19 @@ export default function Settings() {
 
   const { data: settings = [], isLoading } = useQuery({
     queryKey: ["settings"],
-    queryFn: () => db.entities.Settings.list(),
+    queryFn: async () => {
+      // Via API do servidor (service_role) — RLS de settings está quebrada desde 20260921
+      try {
+        const tok = await getValidAccessToken();
+        const res = await fetch(`${window.location.origin}/api/settings`, {
+          headers: { Authorization: `Bearer ${tok || ""}` },
+        });
+        if (res.ok) return await res.json();
+      } catch (e) {
+        console.warn("settings via API falhou, fallback Supabase:", e);
+      }
+      return db.entities.Settings.list();
+    },
     enabled: isSuperAdmin,
   });
 
@@ -252,8 +264,25 @@ export default function Settings() {
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
+      // Preferir API do servidor (service_role) — não depende de RLS de settings
+      try {
+        const tok = await getValidAccessToken();
+        const res = await fetch(`${window.location.origin}/api/settings`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tok || ""}`,
+          },
+          body: JSON.stringify({ entries: data }),
+        });
+        if (res.ok) return await res.json();
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || `HTTP ${res.status}`);
+      } catch (apiErr) {
+        // Fallback: tenta via Supabase direto (caso API indisponível)
+        console.warn("settings API falhou, fallback Supabase:", apiErr);
+      }
       const keys = Object.keys(data);
-      
       for (const key of keys) {
         const existing = settings.find(s => s.key === key);
         if (existing) {
@@ -262,10 +291,18 @@ export default function Settings() {
           await db.entities.Settings.create({ key, value: data[key] });
         }
       }
+      return { ok: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       toast.success("Configurações salvas com sucesso!");
+    },
+    onError: (err) => {
+      console.error("saveMutation error:", err);
+      toast.error(
+        "Erro ao salvar Configurações: " +
+          (err?.message || "verifique os campos e tente novamente")
+      );
     },
   });
 
@@ -633,7 +670,8 @@ export default function Settings() {
     if (!email || !email.includes("@") || editingUser) return;
     if (email === importEmailChecked) return;
     setImportEmailChecked(email);
-    setShowUserModal(false);
+    // NÃO fecha o modal aqui — só troca de modal se achar cliente/usuário
+    // (fechar no blur faz o form sumir enquanto digita a senha)
     try {
       const { data: customer, error: custErr } = await supabase
         .from("customers")
@@ -653,6 +691,7 @@ export default function Settings() {
           .maybeSingle();
         setFoundCustomer(customer);
         setFoundCustomerHasUser(!!existingUser);
+        setShowUserModal(false);
         setShowImportCustomerModal(true);
         return;
       }
@@ -674,20 +713,21 @@ export default function Settings() {
           if (customerByName) {
             setFoundCustomer(customerByName);
             setFoundCustomerHasUser(true);
+            setShowUserModal(false);
             setShowImportCustomerModal(true);
             return;
           }
         }
 
         setExistingUserFound(existingUser);
+        setShowUserModal(false);
         setShowExistingUserModal(true);
         return;
       }
 
-      setShowUserModal(true);
+      // Sem cliente/usuário: modal permanece aberto para continuar o cadastro
     } catch (e) {
       console.error("handleCheckCustomerEmail error:", e);
-      setShowUserModal(true);
     }
   };
 
@@ -919,8 +959,6 @@ export default function Settings() {
                     data-lpignore="true"
                     data-form-type="other"
                     name="company_search"
-                    readOnly
-                    onFocus={(e) => e.currentTarget.removeAttribute('readOnly')}
                     className="pl-9 rounded-xl"
                   />
                 </div>
@@ -1047,8 +1085,6 @@ export default function Settings() {
                   data-lpignore="true"
                   data-form-type="other"
                   name="user_search"
-                  readOnly
-                  onFocus={(e) => e.currentTarget.removeAttribute('readOnly')}
                   className="pl-9 rounded-xl"
                 />
               </div>
