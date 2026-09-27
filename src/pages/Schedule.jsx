@@ -644,7 +644,7 @@ export default function Schedule() {
             <p className="text-on-surface-variant mt-1">Gerencie os agendamentos e atendimentos</p>
           </div>
           
-          <div className="flex items-center gap-2 flex-nowrap overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             {isSuperAdmin && companies.length > 0 && (
               <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
                 <SelectTrigger className="w-28 sm:w-32 rounded-xl border-outline-variant/30 shrink-0">
