@@ -633,21 +633,21 @@ export default function Schedule() {
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-on-surface flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-branding-primary to-branding-secondary">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+          <div className="min-w-0 overflow-hidden">
+            <h1 className="text-2xl sm:text-3xl font-bold text-on-surface flex items-center gap-3 min-w-0">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-branding-primary to-branding-secondary shrink-0">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
-              Agenda
+              <span className="truncate">Agenda</span>
             </h1>
-            <p className="text-on-surface-variant mt-1">Gerencie os agendamentos e atendimentos</p>
+            <p className="text-on-surface-variant mt-1 truncate md:hidden 2xl:block">Gerencie os agendamentos e atendimentos</p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <div className="flex flex-nowrap items-center gap-2 min-w-0 shrink-0">
             {isSuperAdmin && companies.length > 0 && (
               <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger className="w-28 sm:w-32 rounded-xl border-outline-variant/30 shrink-0">
+                <SelectTrigger className="min-w-0 flex-1 max-w-24 md:max-w-28 xl:max-w-32 overflow-hidden rounded-xl border-outline-variant/30 [&_svg]:shrink-0">
                   <Building2 className="w-4 h-4 mr-1.5 text-on-surface-variant flex-shrink-0" />
                   <SelectValue placeholder="Empresas" />
                 </SelectTrigger>
@@ -660,7 +660,7 @@ export default function Schedule() {
               </Select>
             )}
             <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-              <SelectTrigger className="w-24 sm:w-28 rounded-xl border-outline-variant/30 shrink-0">
+              <SelectTrigger className="min-w-0 flex-1 max-w-24 md:max-w-28 xl:max-w-32 overflow-hidden rounded-xl border-outline-variant/30 [&_svg]:shrink-0">
                 <Users className="w-4 h-4 mr-1.5 text-on-surface-variant flex-shrink-0" />
                 <SelectValue placeholder="Clientes" />
               </SelectTrigger>
@@ -673,7 +673,7 @@ export default function Schedule() {
             </Select>
             {(isAdmin || isSuperAdmin) && (
               <Select value={selectedProfessionalId} onValueChange={setSelectedProfessionalId}>
-                <SelectTrigger className="w-28 sm:w-32 rounded-xl border-outline-variant/30 shrink-0">
+                <SelectTrigger className="min-w-0 flex-1 max-w-24 md:max-w-28 xl:max-w-32 overflow-hidden rounded-xl border-outline-variant/30 [&_svg]:shrink-0">
                   <UserCog className="w-4 h-4 mr-1.5 text-on-surface-variant flex-shrink-0" />
                   <SelectValue placeholder="Profissionais" />
                 </SelectTrigger>
@@ -689,20 +689,22 @@ export default function Schedule() {
               <Button
                 variant="outline"
                 onClick={() => setShowBusinessHours(true)}
+                title="Horário de funcionamento"
                 className="rounded-xl border-outline-variant/30 shrink-0 px-3"
               >
-                <Clock className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Horário</span>
+                <Clock className="w-4 h-4" />
+                <span className="hidden xl:inline">Horário</span>
               </Button>
             )}
             {(isAdmin || isSuperAdmin) && (
               <Button
                 variant="outline"
                 onClick={() => setShowBlockedTimes(true)}
+                title="Bloquear horário"
                 className="rounded-xl border-outline-variant/30 shrink-0 px-3"
               >
-                <Ban className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Bloquear Horário</span>
+                <Ban className="w-4 h-4" />
+                <span className="hidden 2xl:inline">Bloquear Horário</span>
               </Button>
             )}
             <Button
@@ -711,11 +713,11 @@ export default function Schedule() {
                 setSelectedTime(null);
                 setShowNewAppointment(true);
               }}
-              className="btn-branding rounded-xl shadow-lg shadow-branding-primary/20 shrink-0 ml-auto"
+              title="Novo agendamento"
+              className="btn-branding rounded-xl shadow-lg shadow-branding-primary/20 shrink-0"
             >
-              <Plus className="w-5 h-5 sm:mr-2" />
-              <span className="hidden sm:inline">Novo</span>
-              <span className="sm:hidden">Novo</span>
+              <Plus className="w-5 h-5" />
+              <span className="hidden xl:inline">Novo</span>
             </Button>
           </div>
         </div>
